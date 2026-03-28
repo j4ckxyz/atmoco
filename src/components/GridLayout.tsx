@@ -6,9 +6,13 @@ import { ThemeToggle } from '@/components/theme-toggle';
 import type { MediaPreview } from '../types';
 import { useEffect, useState } from 'react';
 import MediaPreviewOverlay from './MediaPreviewOverlay';
+import TimezoneOverlay from './TimezoneOverlay';
+import { Clock3 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 export default function GridLayout() {
   const [previewMedia, setPreviewMedia] = useState<MediaPreview | null>(null);
+  const [isTimezoneOpen, setIsTimezoneOpen] = useState(false);
 
   useEffect(() => {
     if (!previewMedia) return;
@@ -39,6 +43,7 @@ export default function GridLayout() {
   return (
     <div className="app-shell h-screen w-screen overflow-hidden flex flex-col">
       <MediaPreviewOverlay media={previewMedia} onClose={() => setPreviewMedia(null)} />
+      <TimezoneOverlay isOpen={isTimezoneOpen} onClose={() => setIsTimezoneOpen(false)} />
 
       {/* Header */}
       <div className="glass-panel border-b border-border/70 px-4 py-2 flex-shrink-0 shadow-sm">
@@ -58,7 +63,20 @@ export default function GridLayout() {
               </p>
             </div>
           </div>
-          <ThemeToggle />
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              className="h-8 px-2 text-[10px] md:text-xs"
+              onClick={() => setIsTimezoneOpen(true)}
+              title="Open timezone panel"
+            >
+              <Clock3 className="h-3.5 w-3.5 mr-1" />
+              Timezones
+            </Button>
+            <ThemeToggle />
+          </div>
         </div>
       </div>
 

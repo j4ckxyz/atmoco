@@ -10,6 +10,7 @@ import { Feather } from 'lucide-react';
 import ComposerOverlay from './ComposerOverlay';
 import { usePostComposer } from '@/hooks/usePostComposer';
 import { FEED_POLL_INTERVAL } from '@/utils/config';
+import type { BlueskyPost } from '@/types';
 
 interface BlueskyFeedProps {
   onPreviewMedia?: (media: MediaPreview) => void;
@@ -20,11 +21,18 @@ export default function BlueskyFeed({ onPreviewMedia, realtime = true }: Bluesky
   const { posts, isLoading, isLoadingMore, error, refresh, loadMore, hasMore } = useBlueskyFeed({
     pollIntervalMs: realtime ? FEED_POLL_INTERVAL : FEED_POLL_INTERVAL * 3,
   });
+  const [interactionPosts, setInteractionPosts] = useState<BlueskyPost[]>([]);
+  const [activeLikeUri, setActiveLikeUri] = useState<string | null>(null);
+  const [activeRepostUri, setActiveRepostUri] = useState<string | null>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
   const [isComposerOpen, setIsComposerOpen] = useState(false);
 
   const composer = usePostComposer();
+
+  useEffect(() => {
+    setInteractionPosts(posts);
+  }, [posts]);
 
   // Listen to Jetstream for new posts (will trigger refresh via polling)
   const handleNewPost = useCallback(() => {
@@ -108,8 +116,129 @@ export default function BlueskyFeed({ onPreviewMedia, realtime = true }: Bluesky
           </div>
         ) : (
           <div className="divide-y divide-border/65">
-            {posts.map((post) => (
-              <PostCard key={post.uri} post={post} onPreviewMedia={onPreviewMedia} />
+            {interactionPosts.map((post) => (
+              <PostCard
+                key={post.uri}
+                post={post}
+                onPreviewMedia={onPreviewMedia}
+                canInteract={composer.isAuthenticated}
+                isLiking={activeLikeUri === post.uri}
+                isReposting={activeRepostUri === post.uri}
+                onToggleLike={async (targetPost) => {
+                  if (!composer.isAuthenticated) {
+                    setIsComposerOpen(true);
+                    return;
+                  }
+
+                  setActiveLikeUri(targetPost.uri);
+                  const previousPost = targetPost;
+
+                  const optimisticLikeActive = !Boolean(targetPost.viewer?.like);
+                  const optimisticLikeCount = Math.max(0, (targetPost.likeCount ?? 0) + (optimisticLikeActive ? 1 : -1));
+                  const pendingLikeToken = `pending-like-${targetPost.uri}`;
+
+                  setInteractionPosts((prev) => prev.map((candidate) => {
+                    if (candidate.uri !== targetPost.uri) {
+                      return candidate;
+                    }
+
+                    return {
+                      ...candidate,
+                      likeCount: optimisticLikeCount,
+                      viewer: {
+                        ...candidate.viewer,
+                        like: optimisticLikeActive ? pendingLikeToken : undefined,
+                      },
+                    };
+                  }));
+
+                  try {
+                    const result = await composer.toggleInteraction({
+                      kind: 'like',
+                      postUri: targetPost.uri,
+                      postCid: targetPost.cid,
+                      existingRecordUri: targetPost.viewer?.like && !targetPost.viewer.like.startsWith('pending-like-')
+                        ? targetPost.viewer.like
+                        : undefined,
+                    });
+
+                    setInteractionPosts((prev) => prev.map((candidate) => {
+                      if (candidate.uri !== targetPost.uri) {
+                        return candidate;
+                      }
+
+                      return {
+                        ...candidate,
+                        viewer: {
+                          ...candidate.viewer,
+                          like: result.active ? result.recordUri : undefined,
+                        },
+                      };
+                    }));
+                  } catch {
+                    setInteractionPosts((prev) => prev.map((candidate) => candidate.uri === previousPost.uri ? previousPost : candidate));
+                  } finally {
+                    setActiveLikeUri(null);
+                  }
+                }}
+                onToggleRepost={async (targetPost) => {
+                  if (!composer.isAuthenticated) {
+                    setIsComposerOpen(true);
+                    return;
+                  }
+
+                  setActiveRepostUri(targetPost.uri);
+                  const previousPost = targetPost;
+
+                  const optimisticRepostActive = !Boolean(targetPost.viewer?.repost);
+                  const optimisticRepostCount = Math.max(0, (targetPost.repostCount ?? 0) + (optimisticRepostActive ? 1 : -1));
+                  const pendingRepostToken = `pending-repost-${targetPost.uri}`;
+
+                  setInteractionPosts((prev) => prev.map((candidate) => {
+                    if (candidate.uri !== targetPost.uri) {
+                      return candidate;
+                    }
+
+                    return {
+                      ...candidate,
+                      repostCount: optimisticRepostCount,
+                      viewer: {
+                        ...candidate.viewer,
+                        repost: optimisticRepostActive ? pendingRepostToken : undefined,
+                      },
+                    };
+                  }));
+
+                  try {
+                    const result = await composer.toggleInteraction({
+                      kind: 'repost',
+                      postUri: targetPost.uri,
+                      postCid: targetPost.cid,
+                      existingRecordUri: targetPost.viewer?.repost && !targetPost.viewer.repost.startsWith('pending-repost-')
+                        ? targetPost.viewer.repost
+                        : undefined,
+                    });
+
+                    setInteractionPosts((prev) => prev.map((candidate) => {
+                      if (candidate.uri !== targetPost.uri) {
+                        return candidate;
+                      }
+
+                      return {
+                        ...candidate,
+                        viewer: {
+                          ...candidate.viewer,
+                          repost: result.active ? result.recordUri : undefined,
+                        },
+                      };
+                    }));
+                  } catch {
+                    setInteractionPosts((prev) => prev.map((candidate) => candidate.uri === previousPost.uri ? previousPost : candidate));
+                  } finally {
+                    setActiveRepostUri(null);
+                  }
+                }}
+              />
             ))}
             
             {/* Load more trigger */}

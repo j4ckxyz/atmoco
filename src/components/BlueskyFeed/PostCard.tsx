@@ -1,12 +1,26 @@
 import type { BlueskyPost, MediaPreview } from '../../types';
 import { MessageCircle, Repeat2, Heart, ExternalLink, CornerDownRight, Quote, Play, GitBranch } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface PostCardProps {
   post: BlueskyPost;
   onPreviewMedia?: (media: MediaPreview) => void;
+  canInteract?: boolean;
+  onToggleLike?: (post: BlueskyPost) => Promise<void>;
+  onToggleRepost?: (post: BlueskyPost) => Promise<void>;
+  isLiking?: boolean;
+  isReposting?: boolean;
 }
 
-export default function PostCard({ post, onPreviewMedia }: PostCardProps) {
+export default function PostCard({
+  post,
+  onPreviewMedia,
+  canInteract = false,
+  onToggleLike,
+  onToggleRepost,
+  isLiking = false,
+  isReposting = false,
+}: PostCardProps) {
   const { author, record, uri, likeCount, repostCount, replyCount, embed } = post;
   
   // Create Bluesky web URL from AT URI
@@ -63,6 +77,10 @@ export default function PostCard({ post, onPreviewMedia }: PostCardProps) {
   const quotedText = quotedRecord?.value?.text;
   const quotedEmbeds = quotedRecord?.embeds ?? [];
   const quotedHasMedia = quotedEmbeds.length > 0;
+  const liked = Boolean(post.viewer?.like);
+  const reposted = Boolean(post.viewer?.repost);
+  const showRepostCount = repostCount ?? 0;
+  const showLikeCount = likeCount ?? 0;
 
   return (
     <div className="p-2 hover:bg-accent/35 transition-colors duration-150">
@@ -260,25 +278,67 @@ export default function PostCard({ post, onPreviewMedia }: PostCardProps) {
       )}
 
       {/* Engagement stats - more compact */}
-      <div className="flex items-center gap-3 text-[10px] text-muted-foreground ml-9 mt-0.5">
+      <div className="flex items-center gap-2 text-[10px] text-muted-foreground ml-9 mt-0.5">
         {(replyCount ?? 0) > 0 && (
           <span className="flex items-center gap-0.5">
             <MessageCircle className="h-2.5 w-2.5" />
             {replyCount}
           </span>
         )}
-        {(repostCount ?? 0) > 0 && (
-          <span className="flex items-center gap-0.5">
-            <Repeat2 className="h-2.5 w-2.5" />
-            {repostCount}
-          </span>
+
+        {canInteract ? (
+          <>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className={`h-6 px-1.5 text-[10px] gap-1 ${reposted ? 'text-green-500 hover:text-green-400' : 'text-muted-foreground hover:text-foreground'}`}
+              onClick={() => {
+                if (!isReposting) {
+                  void onToggleRepost?.(post);
+                }
+              }}
+              disabled={isReposting}
+              title={reposted ? 'Undo repost' : 'Repost'}
+            >
+              <Repeat2 className="h-2.5 w-2.5" />
+              <span>{showRepostCount}</span>
+            </Button>
+
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className={`h-6 px-1.5 text-[10px] gap-1 ${liked ? 'text-pink-500 hover:text-pink-400' : 'text-muted-foreground hover:text-foreground'}`}
+              onClick={() => {
+                if (!isLiking) {
+                  void onToggleLike?.(post);
+                }
+              }}
+              disabled={isLiking}
+              title={liked ? 'Unlike' : 'Like'}
+            >
+              <Heart className={`h-2.5 w-2.5 ${liked ? 'fill-current' : ''}`} />
+              <span>{showLikeCount}</span>
+            </Button>
+          </>
+        ) : (
+          <>
+            {(repostCount ?? 0) > 0 && (
+              <span className="flex items-center gap-0.5">
+                <Repeat2 className="h-2.5 w-2.5" />
+                {repostCount}
+              </span>
+            )}
+            {(likeCount ?? 0) > 0 && (
+              <span className="flex items-center gap-0.5">
+                <Heart className="h-2.5 w-2.5" />
+                {likeCount}
+              </span>
+            )}
+          </>
         )}
-        {(likeCount ?? 0) > 0 && (
-          <span className="flex items-center gap-0.5">
-            <Heart className="h-2.5 w-2.5" />
-            {likeCount}
-          </span>
-        )}
+
         <a
           href={getPostUrl(uri)}
           target="_blank"

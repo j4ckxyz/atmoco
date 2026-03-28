@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { MonitorPlay, Radio, Waves, Menu, X, Download } from 'lucide-react';
+import { MonitorPlay, Radio, Waves, Menu, X, Download, Clock3 } from 'lucide-react';
 import StreamPlayer from './StreamPlayer';
 import BlueskyFeed from './BlueskyFeed/BlueskyFeed';
 import { ThemeToggle } from './theme-toggle';
@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import type { MediaPreview } from '@/types';
 import { STREAM_HANDLES } from '@/utils/config';
 import MediaPreviewOverlay from './MediaPreviewOverlay';
+import TimezoneOverlay from './TimezoneOverlay';
 
 type MobileTab = 'stream1' | 'stream2' | 'stream3' | 'feed';
 
@@ -29,6 +30,7 @@ function isStandalone() {
 export default function MobileLayout() {
   const [activeTab, setActiveTab] = useState<MobileTab>('stream1');
   const [previewMedia, setPreviewMedia] = useState<MediaPreview | null>(null);
+  const [isTimezoneOpen, setIsTimezoneOpen] = useState(false);
   const [showInstallButton, setShowInstallButton] = useState(false);
   const [installPromptEvent, setInstallPromptEvent] = useState<BeforeInstallPromptEvent | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -109,6 +111,7 @@ export default function MobileLayout() {
   return (
     <div className="app-shell h-screen w-screen overflow-hidden flex flex-col">
       <MediaPreviewOverlay media={previewMedia} onClose={() => setPreviewMedia(null)} />
+      <TimezoneOverlay isOpen={isTimezoneOpen} onClose={() => setIsTimezoneOpen(false)} />
 
       <header className="glass-panel border-b border-border/70 px-3 py-2 flex items-center gap-2">
         <img src="/logo.webp" alt="AtmosphereConf Logo" className="h-8 w-auto rounded-sm ring-1 ring-primary/30" />
@@ -123,6 +126,17 @@ export default function MobileLayout() {
             Install
           </Button>
         )}
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          className="h-7 px-2 text-[10px]"
+          onClick={() => setIsTimezoneOpen(true)}
+          title="Open timezone panel"
+        >
+          <Clock3 className="h-3 w-3 mr-1" />
+          Time
+        </Button>
         <ThemeToggle />
       </header>
 

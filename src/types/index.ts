@@ -44,6 +44,11 @@ export interface BlueskyPost {
   uri: string;
   cid: string;
   embed?: any;
+  viewer?: {
+    like?: string;
+    repost?: string;
+    [key: string]: any;
+  };
   author: {
     did: string;
     handle: string;

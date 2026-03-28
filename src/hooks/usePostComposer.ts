@@ -26,6 +26,20 @@ export interface MentionSuggestion {
   avatar?: string;
 }
 
+type InteractionKind = 'like' | 'repost';
+
+interface ToggleInteractionInput {
+  postUri: string;
+  postCid: string;
+  existingRecordUri?: string;
+  kind: InteractionKind;
+}
+
+interface ToggleInteractionResult {
+  active: boolean;
+  recordUri?: string;
+}
+
 interface StoredSession {
   pds: string;
   session: AtpSessionData;
@@ -74,6 +88,29 @@ async function getImageDimensions(file: File): Promise<{ width: number; height: 
     }
 
     return { width: image.naturalWidth, height: image.naturalHeight };
+  } catch {
+    return undefined;
+  }
+}
+
+async function getVideoDimensions(file: File): Promise<{ width: number; height: number } | undefined> {
+  try {
+    const url = URL.createObjectURL(file);
+    const video = await new Promise<HTMLVideoElement>((resolve, reject) => {
+      const element = document.createElement('video');
+      element.preload = 'metadata';
+      element.onloadedmetadata = () => resolve(element);
+      element.onerror = () => reject(new Error('Failed to read video dimensions'));
+      element.src = url;
+    });
+
+    URL.revokeObjectURL(url);
+
+    if (!video.videoWidth || !video.videoHeight) {
+      return undefined;
+    }
+
+    return { width: video.videoWidth, height: video.videoHeight };
   } catch {
     return undefined;
   }
@@ -248,7 +285,11 @@ export function usePostComposer() {
         }
       }
 
-      const dimensions = isImage ? await getImageDimensions(file) : undefined;
+      const dimensions = isImage
+        ? await getImageDimensions(file)
+        : isVideo
+          ? await getVideoDimensions(file)
+          : undefined;
       next.push({
         id: crypto.randomUUID(),
         kind: isImage ? 'image' : 'video',
@@ -381,6 +422,29 @@ export function usePostComposer() {
     }
   }, [clearComposer, media, session, text]);
 
+  const toggleInteraction = useCallback(async ({ postUri, postCid, existingRecordUri, kind }: ToggleInteractionInput): Promise<ToggleInteractionResult> => {
+    const agent = agentRef.current;
+    if (!agent || !session) {
+      throw new Error('Please sign in first');
+    }
+
+    if (kind === 'like') {
+      if (existingRecordUri) {
+        await agent.deleteLike(existingRecordUri);
+        return { active: false };
+      }
+      const created = await agent.like(postUri, postCid);
+      return { active: true, recordUri: created.uri };
+    }
+
+    if (existingRecordUri) {
+      await agent.deleteRepost(existingRecordUri);
+      return { active: false };
+    }
+    const created = await agent.repost(postUri, postCid);
+    return { active: true, recordUri: created.uri };
+  }, [session]);
+
   const fetchMentionSuggestions = useCallback(async (query: string) => {
     const agent = agentRef.current;
     if (!agent || !session) {
@@ -455,6 +519,7 @@ export function usePostComposer() {
     isPosting,
     postError,
     submitPost,
+    toggleInteraction,
 
     promoteText,
   };
