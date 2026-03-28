@@ -1,8 +1,52 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { Button } from '@/components/ui/button';
-import { Camera, Loader2, MessageSquare, ExternalLink, X } from 'lucide-react';
+import { Camera, Loader2, MessageSquare, ExternalLink, X, Minus, Plus, GripHorizontal } from 'lucide-react';
 import LoadingSpinner from './LoadingSpinner';
 import html2canvas from 'html2canvas';
+
+interface ChatWindowLayout {
+  width: number;
+  height: number;
+  x: number;
+  y: number;
+}
+
+const MIN_CHAT_SCALE = 0.75;
+const MAX_CHAT_SCALE = 1.3;
+const CHAT_SCALE_STEP = 0.1;
+
+function getViewport(): { width: number; height: number } {
+  return {
+    width: window.innerWidth,
+    height: window.innerHeight,
+  };
+}
+
+function getDefaultChatLayout(): ChatWindowLayout {
+  const { width: viewportWidth, height: viewportHeight } = getViewport();
+  const width = Math.min(420, Math.max(300, Math.floor(viewportWidth * 0.36)));
+  const height = Math.min(560, Math.max(360, Math.floor(viewportHeight * 0.72)));
+  const x = Math.max(12, viewportWidth - width - 12);
+  const y = Math.max(60, Math.min(84, viewportHeight - height - 12));
+
+  return { width, height, x, y };
+}
+
+function clampLayout(layout: ChatWindowLayout): ChatWindowLayout {
+  const { width: viewportWidth, height: viewportHeight } = getViewport();
+  const width = Math.min(layout.width, viewportWidth - 12);
+  const height = Math.min(layout.height, viewportHeight - 12);
+
+  const maxX = Math.max(0, viewportWidth - width - 6);
+  const maxY = Math.max(0, viewportHeight - height - 6);
+
+  return {
+    width,
+    height,
+    x: Math.max(6, Math.min(layout.x, maxX)),
+    y: Math.max(6, Math.min(layout.y, maxY)),
+  };
+}
 
 interface StreamPlayerProps {
   handle: string;
@@ -11,12 +55,15 @@ interface StreamPlayerProps {
 export default function StreamPlayer({ handle }: StreamPlayerProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const dragStateRef = useRef<{ pointerId: number; startX: number; startY: number; startWindowX: number; startWindowY: number } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
   const [showControls, setShowControls] = useState(false);
   const [isCapturing, setIsCapturing] = useState(false);
   const [isTouchDevice, setIsTouchDevice] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const [chatLayout, setChatLayout] = useState<ChatWindowLayout>(() => getDefaultChatLayout());
+  const [chatScale, setChatScale] = useState(0.9);
 
   const embedUrl = `https://stream.place/embed/${handle}`;
   const chatUrl = `https://stream.place/chat-popout/${handle}`;
@@ -44,15 +91,63 @@ export default function StreamPlayer({ handle }: StreamPlayerProps) {
       }
     };
 
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
+    const onResize = () => {
+      setChatLayout((previous) => clampLayout(previous));
+    };
 
     window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('resize', onResize);
     return () => {
-      document.body.style.overflow = previousOverflow;
       window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('resize', onResize);
     };
   }, [isChatOpen]);
+
+  const handleChatDragStart = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0) {
+      return;
+    }
+
+    dragStateRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      startWindowX: chatLayout.x,
+      startWindowY: chatLayout.y,
+    };
+
+    const onPointerMove = (moveEvent: PointerEvent) => {
+      const dragState = dragStateRef.current;
+      if (!dragState || moveEvent.pointerId !== dragState.pointerId) {
+        return;
+      }
+
+      const deltaX = moveEvent.clientX - dragState.startX;
+      const deltaY = moveEvent.clientY - dragState.startY;
+
+      setChatLayout((previous) =>
+        clampLayout({
+          ...previous,
+          x: dragState.startWindowX + deltaX,
+          y: dragState.startWindowY + deltaY,
+        }),
+      );
+    };
+
+    const onPointerUp = (upEvent: PointerEvent) => {
+      const dragState = dragStateRef.current;
+      if (!dragState || upEvent.pointerId !== dragState.pointerId) {
+        return;
+      }
+
+      dragStateRef.current = null;
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerup', onPointerUp);
+    };
+
+    window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointerup', onPointerUp);
+  };
 
   const handleError = () => {
     setHasError(true);
@@ -156,28 +251,55 @@ export default function StreamPlayer({ handle }: StreamPlayerProps) {
 
       {isChatOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black/50 backdrop-blur-[1px]"
-          onClick={() => setIsChatOpen(false)}
-          role="button"
-          tabIndex={0}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter' || event.key === ' ') {
-              setIsChatOpen(false);
-            }
-          }}
-          aria-label="Close chat panel"
+          className="fixed inset-0 z-50 pointer-events-none"
         >
           <div
-            className="absolute right-3 top-16 bottom-3 w-[min(420px,92vw)] rounded-xl border border-border/70 bg-card/95 backdrop-blur-md shadow-2xl overflow-hidden"
-            onClick={(event) => event.stopPropagation()}
+            className="absolute rounded-xl border border-border/70 bg-card/95 backdrop-blur-md shadow-2xl overflow-hidden pointer-events-auto"
+            style={{
+              left: `${chatLayout.x}px`,
+              top: `${chatLayout.y}px`,
+              width: `${chatLayout.width}px`,
+              height: `${chatLayout.height}px`,
+            }}
           >
-            <div className="h-11 px-3 border-b border-border/70 flex items-center justify-between gap-2">
+            <div
+              className="h-11 px-3 border-b border-border/70 flex items-center justify-between gap-2 cursor-grab active:cursor-grabbing select-none"
+              onPointerDown={handleChatDragStart}
+              title="Drag chat window"
+            >
               <div className="min-w-0">
                 <p className="text-xs font-semibold truncate">Live Chat</p>
                 <p className="text-[10px] text-muted-foreground truncate">@{handle}</p>
               </div>
 
+              <div className="text-muted-foreground/70 hidden md:flex">
+                <GripHorizontal className="h-3.5 w-3.5" />
+              </div>
+
               <div className="flex items-center gap-1">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
+                  onClick={() => setChatScale((previous) => Math.max(MIN_CHAT_SCALE, Number((previous - CHAT_SCALE_STEP).toFixed(2))))}
+                  title="Smaller text"
+                >
+                  <Minus className="h-3.5 w-3.5" />
+                </Button>
+                <div className="w-10 text-center text-[10px] text-muted-foreground tabular-nums">
+                  {Math.round(chatScale * 100)}%
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
+                  onClick={() => setChatScale((previous) => Math.min(MAX_CHAT_SCALE, Number((previous + CHAT_SCALE_STEP).toFixed(2))))}
+                  title="Bigger text"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                </Button>
                 <Button
                   type="button"
                   variant="ghost"
@@ -201,12 +323,20 @@ export default function StreamPlayer({ handle }: StreamPlayerProps) {
               </div>
             </div>
 
-            <iframe
-              src={chatUrl}
-              title={`Stream chat for ${handle}`}
-              className="w-full h-[calc(100%-44px)] border-0"
-              allow="clipboard-read; clipboard-write"
-            />
+            <div className="relative h-[calc(100%-44px)] overflow-hidden bg-black">
+              <iframe
+                src={chatUrl}
+                title={`Stream chat for ${handle}`}
+                className="absolute left-0 top-0 border-0"
+                style={{
+                  width: `${100 / chatScale}%`,
+                  height: `${100 / chatScale}%`,
+                  transform: `scale(${chatScale})`,
+                  transformOrigin: 'top left',
+                }}
+                allow="clipboard-read; clipboard-write"
+              />
+            </div>
           </div>
         </div>
       )}
