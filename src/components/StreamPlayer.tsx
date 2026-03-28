@@ -128,13 +128,13 @@ export default function StreamPlayer({ handle }: StreamPlayerProps) {
 
       {/* Floating controls overlay */}
       {!isLoading && !hasError && showControls && (
-        <div className="screenshot-controls absolute top-2 right-2 z-20 flex gap-2">
+        <div className="screenshot-controls absolute top-2 right-2 z-20 flex gap-2 animate-in fade-in-0 duration-150">
           <Button
             size="icon"
             variant="secondary"
             onClick={takeScreenshot}
             disabled={isCapturing}
-            className="bg-background/90 backdrop-blur-sm hover:bg-background"
+            className="bg-background/90 backdrop-blur-sm hover:bg-background rounded-md shadow-sm"
             title="Take screenshot and copy to clipboard"
           >
             {isCapturing ? (

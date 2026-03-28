@@ -50,10 +50,10 @@ export default function BlueskyFeed() {
   return (
     <div className="h-full flex flex-col">
       {/* Status bar */}
-      <div className="px-2 py-1.5 border-b flex items-center justify-between bg-muted/50">
+      <div className="px-2 py-1.5 border-b border-border/70 flex items-center justify-between bg-muted/35">
         <div className="flex items-center gap-1.5 text-[10px]">
           <span className={`h-1.5 w-1.5 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></span>
-          <span className="text-muted-foreground">
+          <span className="text-muted-foreground font-medium">
             {isConnected ? 'Live' : 'Offline'}
           </span>
         </div>
@@ -62,7 +62,7 @@ export default function BlueskyFeed() {
           size="sm"
           onClick={refresh}
           disabled={isLoading}
-          className="h-6 px-2 text-[10px]"
+          className="h-6 px-2 text-[10px] rounded-md"
         >
           Refresh
         </Button>
@@ -87,7 +87,7 @@ export default function BlueskyFeed() {
             No posts yet...
           </div>
         ) : (
-          <div className="divide-y">
+          <div className="divide-y divide-border/65">
             {posts.map((post) => (
               <PostCard key={post.uri} post={post} />
             ))}
@@ -111,7 +111,7 @@ export default function BlueskyFeed() {
       </ScrollArea>
 
       {/* Footer with post count */}
-      <div className="px-3 py-1.5 border-t text-[10px] text-muted-foreground text-center bg-muted/50">
+      <div className="px-3 py-1.5 border-t border-border/70 text-[10px] text-muted-foreground text-center bg-muted/35">
         {posts.length} {posts.length === 1 ? 'post' : 'posts'}
       </div>
     </div>
