@@ -429,84 +429,76 @@ export default function BlueskyFeed({ onPreviewMedia, realtime = true }: Bluesky
                 }}
                 />
 
-                {composer.isAuthenticated && (
-                <div className="ml-9 mr-2 mb-2 mt-1 rounded-md border border-border/70 bg-muted/20 p-2 space-y-1">
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="text-[10px] text-muted-foreground">Reply in-app</p>
-                  </div>
+                {composer.isAuthenticated && Object.prototype.hasOwnProperty.call(replyDraftByUri, post.uri) && (
+                  <div className="ml-9 mr-2 mb-2 mt-1 rounded-md border border-border/70 bg-muted/20 p-2 space-y-1.5">
+                    <textarea
+                      value={replyDraftByUri[post.uri] ?? ''}
+                      onChange={(event) => {
+                        const next = event.target.value;
+                        setReplyDraftByUri((prev) => ({ ...prev, [post.uri]: next }));
+                      }}
+                      placeholder={`Reply to @${post.author.handle}`}
+                      className="w-full min-h-16 rounded-md border border-input bg-background px-2 py-1.5 text-[11px] leading-5 outline-none resize-y focus-visible:ring-2 focus-visible:ring-ring"
+                    />
 
-                  {Object.prototype.hasOwnProperty.call(replyDraftByUri, post.uri) && (
-                    <div className="space-y-1.5">
-                      <textarea
-                        value={replyDraftByUri[post.uri] ?? ''}
-                        onChange={(event) => {
-                          const next = event.target.value;
-                          setReplyDraftByUri((prev) => ({ ...prev, [post.uri]: next }));
+                    <div className="flex items-center justify-end gap-1.5">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 px-2 text-[10px]"
+                        onClick={() => {
+                          setReplyDraftByUri((prev) => {
+                            const next = { ...prev };
+                            delete next[post.uri];
+                            return next;
+                          });
                         }}
-                        placeholder={`Reply to @${post.author.handle}`}
-                        className="w-full min-h-16 rounded-md border border-input bg-background px-2 py-1.5 text-[11px] leading-5 outline-none resize-y focus-visible:ring-2 focus-visible:ring-ring"
-                      />
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        className="h-6 px-2 text-[10px]"
+                        disabled={activeReplyUri === post.uri || !(replyDraftByUri[post.uri] ?? '').trim()}
+                        onClick={async () => {
+                          const draft = (replyDraftByUri[post.uri] ?? '').trim();
+                          if (!draft) {
+                            return;
+                          }
 
-                      <div className="flex items-center justify-end gap-1.5">
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="h-6 px-2 text-[10px]"
-                          onClick={() => {
+                          setActiveReplyUri(post.uri);
+
+                          try {
+                            await composer.submitPost({
+                              textOverride: draft,
+                              mediaOverride: [],
+                              replyTo: {
+                                parentUri: post.uri,
+                                parentCid: post.cid,
+                                rootUri: post.record?.reply?.root?.uri,
+                                rootCid: post.record?.reply?.root?.cid,
+                              },
+                            });
+
                             setReplyDraftByUri((prev) => {
                               const next = { ...prev };
                               delete next[post.uri];
                               return next;
                             });
-                          }}
-                        >
-                          Cancel
-                        </Button>
-                        <Button
-                          type="button"
-                          size="sm"
-                          className="h-6 px-2 text-[10px]"
-                          disabled={activeReplyUri === post.uri || !(replyDraftByUri[post.uri] ?? '').trim()}
-                          onClick={async () => {
-                            const draft = (replyDraftByUri[post.uri] ?? '').trim();
-                            if (!draft) {
-                              return;
-                            }
-
-                            setActiveReplyUri(post.uri);
-
-                            try {
-                              await composer.submitPost({
-                                textOverride: draft,
-                                mediaOverride: [],
-                                replyTo: {
-                                  parentUri: post.uri,
-                                  parentCid: post.cid,
-                                  rootUri: post.record?.reply?.root?.uri,
-                                  rootCid: post.record?.reply?.root?.cid,
-                                },
-                              });
-
-                              setReplyDraftByUri((prev) => {
-                                const next = { ...prev };
-                                delete next[post.uri];
-                                return next;
-                              });
-                              refresh();
-                            } catch {
-                              // error surfaced via composer state
-                            } finally {
-                              setActiveReplyUri(null);
-                            }
-                          }}
-                        >
-                          {activeReplyUri === post.uri ? 'Replying...' : 'Reply'}
-                        </Button>
-                      </div>
+                            refresh();
+                          } catch {
+                            // error surfaced via composer state
+                          } finally {
+                            setActiveReplyUri(null);
+                          }
+                        }}
+                      >
+                        {activeReplyUri === post.uri ? 'Replying...' : 'Reply'}
+                      </Button>
                     </div>
-                  )}
-                </div>
+                  </div>
                 )}
               </div>
             ))}
