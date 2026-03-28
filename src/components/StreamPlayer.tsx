@@ -82,6 +82,7 @@ export default function StreamPlayer({ handle }: StreamPlayerProps) {
 
   const embedUrl = `https://stream.place/embed/${handle}`;
   const chatUrl = `https://stream.place/chat-popout/${handle}`;
+  const streamUrl = `https://stream.place/${handle}`;
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -176,7 +177,7 @@ export default function StreamPlayer({ handle }: StreamPlayerProps) {
   };
 
   const openChatInNewTab = () => {
-    window.open(chatUrl, '_blank', 'noopener,noreferrer');
+    window.open(streamUrl, '_blank', 'noopener,noreferrer');
   };
 
   const takeScreenshot = async () => {
@@ -448,20 +449,20 @@ export default function StreamPlayer({ handle }: StreamPlayerProps) {
           <Button
             size="icon"
             variant="secondary"
-            onClick={openChatWindow}
+            onClick={openChatInNewTab}
             className="bg-background/90 backdrop-blur-sm hover:bg-background rounded-md shadow-sm"
-            title="Open chat in this page"
+            title="Open chat on stream.place (recommended for sign-in)"
           >
-            <MessageSquare className="h-4 w-4" />
+            <ExternalLink className="h-4 w-4" />
           </Button>
           <Button
             size="icon"
             variant="secondary"
-            onClick={openChatInNewTab}
+            onClick={openChatWindow}
             className="bg-background/90 backdrop-blur-sm hover:bg-background rounded-md shadow-sm"
-            title="Open stream chat in new tab (recommended for sign-in)"
+            title="Open embedded chat in this page"
           >
-            <ExternalLink className="h-4 w-4" />
+            <MessageSquare className="h-4 w-4" />
           </Button>
           <Button
             size="icon"
