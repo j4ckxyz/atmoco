@@ -64,8 +64,31 @@ export default function BlueskyFeed({ onPreviewMedia, realtime = true }: Bluesky
   );
 
   useEffect(() => {
-    setInteractionPosts(applyInteractionCache(posts));
-  }, [applyInteractionCache, posts]);
+    setInteractionPosts((previousPosts) => {
+      const previousByUri = new Map(previousPosts.map((post) => [post.uri, post]));
+
+      return applyInteractionCache(posts).map((post) => {
+        const previous = previousByUri.get(post.uri);
+        if (!previous) {
+          return post;
+        }
+
+        const hasCachedLike = Object.prototype.hasOwnProperty.call(interactionCache[post.uri] ?? {}, 'like');
+        const hasCachedRepost = Object.prototype.hasOwnProperty.call(interactionCache[post.uri] ?? {}, 'repost');
+
+        const mergedViewer = {
+          ...(post.viewer ?? {}),
+          ...((!hasCachedLike && previous.viewer?.like) ? { like: previous.viewer.like } : {}),
+          ...((!hasCachedRepost && previous.viewer?.repost) ? { repost: previous.viewer.repost } : {}),
+        };
+
+        return {
+          ...post,
+          viewer: mergedViewer,
+        };
+      });
+    });
+  }, [applyInteractionCache, interactionCache, posts]);
 
   useEffect(() => {
     if (!composer.isAuthenticated || posts.length === 0) {
@@ -76,6 +99,27 @@ export default function BlueskyFeed({ onPreviewMedia, realtime = true }: Bluesky
     void composer.hydrateViewerState(posts).then((hydrated) => {
       if (!isCancelled) {
         setInteractionPosts(applyInteractionCache(hydrated));
+
+        setInteractionCache((previous) => {
+          const next = { ...previous };
+
+          for (const post of hydrated) {
+            const hasLikeField = Object.prototype.hasOwnProperty.call(post.viewer ?? {}, 'like');
+            const hasRepostField = Object.prototype.hasOwnProperty.call(post.viewer ?? {}, 'repost');
+
+            if (!hasLikeField && !hasRepostField) {
+              continue;
+            }
+
+            next[post.uri] = {
+              ...next[post.uri],
+              ...(hasLikeField ? { like: post.viewer?.like ?? null } : {}),
+              ...(hasRepostField ? { repost: post.viewer?.repost ?? null } : {}),
+            };
+          }
+
+          return next;
+        });
       }
     });
 
