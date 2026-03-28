@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Camera, Loader2 } from 'lucide-react';
+import { Camera, Loader2, MessageSquare, ExternalLink, X } from 'lucide-react';
 import LoadingSpinner from './LoadingSpinner';
 import html2canvas from 'html2canvas';
 
@@ -15,8 +15,11 @@ export default function StreamPlayer({ handle }: StreamPlayerProps) {
   const [hasError, setHasError] = useState(false);
   const [showControls, setShowControls] = useState(false);
   const [isCapturing, setIsCapturing] = useState(false);
+  const [isTouchDevice, setIsTouchDevice] = useState(false);
+  const [isChatOpen, setIsChatOpen] = useState(false);
 
   const embedUrl = `https://stream.place/embed/${handle}`;
+  const chatUrl = `https://stream.place/chat-popout/${handle}`;
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -25,6 +28,31 @@ export default function StreamPlayer({ handle }: StreamPlayerProps) {
 
     return () => clearTimeout(timer);
   }, []);
+
+  useEffect(() => {
+    setIsTouchDevice(window.matchMedia('(pointer: coarse)').matches);
+  }, []);
+
+  useEffect(() => {
+    if (!isChatOpen) {
+      return;
+    }
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsChatOpen(false);
+      }
+    };
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  }, [isChatOpen]);
 
   const handleError = () => {
     setHasError(true);
@@ -126,9 +154,75 @@ export default function StreamPlayer({ handle }: StreamPlayerProps) {
         </div>
       )}
 
+      {isChatOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/50 backdrop-blur-[1px]"
+          onClick={() => setIsChatOpen(false)}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              setIsChatOpen(false);
+            }
+          }}
+          aria-label="Close chat panel"
+        >
+          <div
+            className="absolute right-3 top-16 bottom-3 w-[min(420px,92vw)] rounded-xl border border-border/70 bg-card/95 backdrop-blur-md shadow-2xl overflow-hidden"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="h-11 px-3 border-b border-border/70 flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-xs font-semibold truncate">Live Chat</p>
+                <p className="text-[10px] text-muted-foreground truncate">@{handle}</p>
+              </div>
+
+              <div className="flex items-center gap-1">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
+                  onClick={() => window.open(chatUrl, '_blank', 'noopener,noreferrer')}
+                  title="Open chat in new tab"
+                >
+                  <ExternalLink className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
+                  onClick={() => setIsChatOpen(false)}
+                  title="Close chat"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            </div>
+
+            <iframe
+              src={chatUrl}
+              title={`Stream chat for ${handle}`}
+              className="w-full h-[calc(100%-44px)] border-0"
+              allow="clipboard-read; clipboard-write"
+            />
+          </div>
+        </div>
+      )}
+
       {/* Floating controls overlay */}
-      {!isLoading && !hasError && showControls && (
+      {!isLoading && !hasError && (showControls || isTouchDevice) && (
         <div className="screenshot-controls absolute top-2 right-2 z-20 flex gap-2 animate-in fade-in-0 duration-150">
+          <Button
+            size="icon"
+            variant="secondary"
+            onClick={() => setIsChatOpen(true)}
+            className="bg-background/90 backdrop-blur-sm hover:bg-background rounded-md shadow-sm"
+            title="Open stream chat"
+          >
+            <MessageSquare className="h-4 w-4" />
+          </Button>
           <Button
             size="icon"
             variant="secondary"
