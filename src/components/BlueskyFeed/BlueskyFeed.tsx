@@ -11,7 +11,6 @@ import ComposerOverlay from './ComposerOverlay';
 import { usePostComposer } from '@/hooks/usePostComposer';
 import { FEED_POLL_INTERVAL } from '@/utils/config';
 import type { BlueskyPost } from '@/types';
-import { MessageCircle } from 'lucide-react';
 
 interface BlueskyFeedProps {
   onPreviewMedia?: (media: MediaPreview) => void;
@@ -142,6 +141,23 @@ export default function BlueskyFeed({ onPreviewMedia, realtime = true }: Bluesky
                   post={post}
                   onPreviewMedia={onPreviewMedia}
                   canInteract={composer.isAuthenticated}
+                  isReplyOpen={Object.prototype.hasOwnProperty.call(replyDraftByUri, post.uri)}
+                  onToggleReply={(targetPost) => {
+                    if (!composer.isAuthenticated) {
+                      setIsComposerOpen(true);
+                      return;
+                    }
+
+                    setReplyDraftByUri((prev) => {
+                      const next = { ...prev };
+                      if (Object.prototype.hasOwnProperty.call(next, targetPost.uri)) {
+                        delete next[targetPost.uri];
+                      } else {
+                        next[targetPost.uri] = '';
+                      }
+                      return next;
+                    });
+                  }}
                   isLiking={activeLikeUri === post.uri}
                   isReposting={activeRepostUri === post.uri}
                 onToggleLike={async (targetPost) => {
@@ -264,18 +280,6 @@ export default function BlueskyFeed({ onPreviewMedia, realtime = true }: Bluesky
                 <div className="ml-9 mr-2 mb-2 mt-1 rounded-md border border-border/70 bg-muted/20 p-2 space-y-1">
                   <div className="flex items-center justify-between gap-2">
                     <p className="text-[10px] text-muted-foreground">Reply in-app</p>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 px-1.5 text-[10px]"
-                      onClick={() => {
-                        setReplyDraftByUri((prev) => ({ ...prev, [post.uri]: '' }));
-                      }}
-                    >
-                      <MessageCircle className="h-2.5 w-2.5 mr-1" />
-                      Quick Reply
-                    </Button>
                   </div>
 
                   {Object.prototype.hasOwnProperty.call(replyDraftByUri, post.uri) && (

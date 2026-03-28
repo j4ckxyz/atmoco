@@ -6,6 +6,8 @@ interface PostCardProps {
   post: BlueskyPost;
   onPreviewMedia?: (media: MediaPreview) => void;
   canInteract?: boolean;
+  onToggleReply?: (post: BlueskyPost) => void;
+  isReplyOpen?: boolean;
   onToggleLike?: (post: BlueskyPost) => Promise<void>;
   onToggleRepost?: (post: BlueskyPost) => Promise<void>;
   isLiking?: boolean;
@@ -16,6 +18,8 @@ export default function PostCard({
   post,
   onPreviewMedia,
   canInteract = false,
+  onToggleReply,
+  isReplyOpen = false,
   onToggleLike,
   onToggleRepost,
   isLiking = false,
@@ -279,11 +283,25 @@ export default function PostCard({
 
       {/* Engagement stats - more compact */}
       <div className="flex items-center gap-3 text-[10px] text-muted-foreground ml-9 mt-0.5">
-        {(replyCount ?? 0) > 0 && (
-          <span className="flex items-center gap-0.5">
+        {canInteract ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className={`h-7 px-2 text-[10px] gap-1.5 rounded-md ${isReplyOpen ? 'text-primary bg-primary/10' : 'text-muted-foreground hover:text-foreground'}`}
+            onClick={() => onToggleReply?.(post)}
+            title="Reply"
+          >
             <MessageCircle className="h-2.5 w-2.5" />
-            {replyCount}
-          </span>
+            <span>{replyCount ?? 0}</span>
+          </Button>
+        ) : (
+          (replyCount ?? 0) > 0 && (
+            <span className="flex items-center gap-0.5">
+              <MessageCircle className="h-2.5 w-2.5" />
+              {replyCount}
+            </span>
+          )
         )}
 
         {canInteract ? (
