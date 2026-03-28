@@ -278,7 +278,7 @@ export default function PostCard({
       )}
 
       {/* Engagement stats - more compact */}
-      <div className="flex items-center gap-2 text-[10px] text-muted-foreground ml-9 mt-0.5">
+      <div className="flex items-center gap-3 text-[10px] text-muted-foreground ml-9 mt-0.5">
         {(replyCount ?? 0) > 0 && (
           <span className="flex items-center gap-0.5">
             <MessageCircle className="h-2.5 w-2.5" />
@@ -292,7 +292,7 @@ export default function PostCard({
               type="button"
               variant="ghost"
               size="sm"
-              className={`h-6 px-1.5 text-[10px] gap-1 ${reposted ? 'text-green-500 hover:text-green-400' : 'text-muted-foreground hover:text-foreground'}`}
+              className={`h-7 px-2 text-[10px] gap-1.5 rounded-md ${reposted ? 'text-green-500 hover:text-green-400' : 'text-muted-foreground hover:text-foreground'}`}
               onClick={() => {
                 if (!isReposting) {
                   void onToggleRepost?.(post);
@@ -309,7 +309,7 @@ export default function PostCard({
               type="button"
               variant="ghost"
               size="sm"
-              className={`h-6 px-1.5 text-[10px] gap-1 ${liked ? 'text-pink-500 hover:text-pink-400' : 'text-muted-foreground hover:text-foreground'}`}
+              className={`h-7 px-2 text-[10px] gap-1.5 rounded-md ${liked ? 'text-pink-500 hover:text-pink-400' : 'text-muted-foreground hover:text-foreground'}`}
               onClick={() => {
                 if (!isLiking) {
                   void onToggleLike?.(post);

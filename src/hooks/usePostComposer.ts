@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { BskyAgent, RichText, type AtpSessionData, type AppBskyFeedPost } from '@atproto/api';
 import { resolvePdsFromHandle } from '@/utils/atproto';
+import type { BlueskyPost } from '@/types';
 
 const SESSION_STORAGE_KEY = 'atmosphereconf-post-session-v1';
 const MAX_IMAGES = 4;
@@ -38,6 +39,19 @@ interface ToggleInteractionInput {
 interface ToggleInteractionResult {
   active: boolean;
   recordUri?: string;
+}
+
+export interface ReplyTarget {
+  parentUri: string;
+  parentCid: string;
+  rootUri?: string;
+  rootCid?: string;
+}
+
+interface SubmitPostOptions {
+  replyTo?: ReplyTarget;
+  textOverride?: string;
+  mediaOverride?: ComposerMediaItem[];
 }
 
 interface StoredSession {
@@ -330,7 +344,7 @@ export function usePostComposer() {
     });
   }, []);
 
-  const submitPost = useCallback(async () => {
+  const submitPost = useCallback(async (options?: SubmitPostOptions) => {
     const agent = agentRef.current;
     if (!agent || !session) {
       throw new Error('Please sign in first');
@@ -340,28 +354,30 @@ export function usePostComposer() {
     setPostError(null);
 
     try {
-      const trimmedText = text.trim();
-      if (!trimmedText && media.length === 0) {
+      const effectiveText = (options?.textOverride ?? text).trim();
+      const effectiveMedia = options?.mediaOverride ?? media;
+
+      if (!effectiveText && effectiveMedia.length === 0) {
         throw new Error('Post cannot be empty');
       }
 
-      const richText = new RichText({ text: trimmedText });
+      const richText = new RichText({ text: effectiveText });
       await richText.detectFacets(agent);
 
       if (utf8ByteLength(richText.text) > 300) {
         throw new Error('Post text exceeds 300-byte Bluesky limit');
       }
 
-      const hasMissingImageAlt = media.some((item) => item.kind === 'image' && !item.alt.trim());
+      const hasMissingImageAlt = effectiveMedia.some((item) => item.kind === 'image' && !item.alt.trim());
       if (hasMissingImageAlt) {
         throw new Error('Please add alt text for each attached image');
       }
 
       let embed: AppBskyFeedPost.Record['embed'];
-      if (media.length > 0) {
-        if (media.some((item) => item.kind === 'image')) {
+      if (effectiveMedia.length > 0) {
+        if (effectiveMedia.some((item) => item.kind === 'image')) {
           const images = [] as Array<{ image: unknown; alt: string; aspectRatio?: { width: number; height: number } }>;
-          for (const item of media) {
+          for (const item of effectiveMedia) {
             if (item.kind !== 'image') {
               continue;
             }
@@ -382,7 +398,7 @@ export function usePostComposer() {
             images,
           } as AppBskyFeedPost.Record['embed'];
         } else {
-          const video = media[0];
+          const video = effectiveMedia[0];
           const uploaded = await agent.uploadBlob(new Uint8Array(await video.file.arrayBuffer()), {
             encoding: video.file.type || 'video/mp4',
           });
@@ -395,7 +411,7 @@ export function usePostComposer() {
           } as AppBskyFeedPost.Record['embed'];
         }
       } else {
-        const firstLink = extractUrl(trimmedText);
+        const firstLink = extractUrl(effectiveText);
         if (firstLink) {
           embed = await buildExternalEmbed(agent, firstLink);
         }
@@ -405,6 +421,20 @@ export function usePostComposer() {
         $type: 'app.bsky.feed.post',
         text: richText.text,
         facets: richText.facets,
+        ...(options?.replyTo
+          ? {
+              reply: {
+                root: {
+                  uri: options.replyTo.rootUri ?? options.replyTo.parentUri,
+                  cid: options.replyTo.rootCid ?? options.replyTo.parentCid,
+                },
+                parent: {
+                  uri: options.replyTo.parentUri,
+                  cid: options.replyTo.parentCid,
+                },
+              },
+            }
+          : {}),
         langs: [COMPOSER_LANG],
         tags: [HIDDEN_TAG],
         createdAt: new Date().toISOString(),
@@ -412,7 +442,9 @@ export function usePostComposer() {
       };
 
       await agent.post(record);
-      clearComposer();
+      if (!options?.textOverride && !options?.mediaOverride) {
+        clearComposer();
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to publish post';
       setPostError(message);
@@ -421,6 +453,46 @@ export function usePostComposer() {
       setIsPosting(false);
     }
   }, [clearComposer, media, session, text]);
+
+  const hydrateViewerState = useCallback(async (posts: BlueskyPost[]): Promise<BlueskyPost[]> => {
+    const agent = agentRef.current;
+    if (!agent || !session || posts.length === 0) {
+      return posts;
+    }
+
+    try {
+      const hydratedByUri = new Map<string, any>();
+      const chunkSize = 25;
+
+      for (let index = 0; index < posts.length; index += chunkSize) {
+        const chunk = posts.slice(index, index + chunkSize);
+        const response = await agent.getPosts({ uris: chunk.map((post) => post.uri) });
+        for (const hydrated of response.data.posts ?? []) {
+          hydratedByUri.set(hydrated.uri, hydrated);
+        }
+      }
+
+      return posts.map((post) => {
+        const hydrated = hydratedByUri.get(post.uri);
+        if (!hydrated) {
+          return post;
+        }
+
+        return {
+          ...post,
+          likeCount: hydrated.likeCount ?? post.likeCount,
+          repostCount: hydrated.repostCount ?? post.repostCount,
+          replyCount: hydrated.replyCount ?? post.replyCount,
+          viewer: {
+            ...post.viewer,
+            ...hydrated.viewer,
+          },
+        };
+      });
+    } catch {
+      return posts;
+    }
+  }, [session]);
 
   const toggleInteraction = useCallback(async ({ postUri, postCid, existingRecordUri, kind }: ToggleInteractionInput): Promise<ToggleInteractionResult> => {
     const agent = agentRef.current;
@@ -520,6 +592,7 @@ export function usePostComposer() {
     postError,
     submitPost,
     toggleInteraction,
+    hydrateViewerState,
 
     promoteText,
   };

@@ -11,6 +11,7 @@ import ComposerOverlay from './ComposerOverlay';
 import { usePostComposer } from '@/hooks/usePostComposer';
 import { FEED_POLL_INTERVAL } from '@/utils/config';
 import type { BlueskyPost } from '@/types';
+import { MessageCircle } from 'lucide-react';
 
 interface BlueskyFeedProps {
   onPreviewMedia?: (media: MediaPreview) => void;
@@ -24,6 +25,8 @@ export default function BlueskyFeed({ onPreviewMedia, realtime = true }: Bluesky
   const [interactionPosts, setInteractionPosts] = useState<BlueskyPost[]>([]);
   const [activeLikeUri, setActiveLikeUri] = useState<string | null>(null);
   const [activeRepostUri, setActiveRepostUri] = useState<string | null>(null);
+  const [activeReplyUri, setActiveReplyUri] = useState<string | null>(null);
+  const [replyDraftByUri, setReplyDraftByUri] = useState<Record<string, string>>({});
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
   const [isComposerOpen, setIsComposerOpen] = useState(false);
@@ -33,6 +36,23 @@ export default function BlueskyFeed({ onPreviewMedia, realtime = true }: Bluesky
   useEffect(() => {
     setInteractionPosts(posts);
   }, [posts]);
+
+  useEffect(() => {
+    if (!composer.isAuthenticated || posts.length === 0) {
+      return;
+    }
+
+    let isCancelled = false;
+    void composer.hydrateViewerState(posts).then((hydrated) => {
+      if (!isCancelled) {
+        setInteractionPosts(hydrated);
+      }
+    });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [composer.hydrateViewerState, composer.isAuthenticated, posts]);
 
   // Listen to Jetstream for new posts (will trigger refresh via polling)
   const handleNewPost = useCallback(() => {
@@ -117,13 +137,13 @@ export default function BlueskyFeed({ onPreviewMedia, realtime = true }: Bluesky
         ) : (
           <div className="divide-y divide-border/65">
             {interactionPosts.map((post) => (
-              <PostCard
-                key={post.uri}
-                post={post}
-                onPreviewMedia={onPreviewMedia}
-                canInteract={composer.isAuthenticated}
-                isLiking={activeLikeUri === post.uri}
-                isReposting={activeRepostUri === post.uri}
+              <div key={post.uri}>
+                <PostCard
+                  post={post}
+                  onPreviewMedia={onPreviewMedia}
+                  canInteract={composer.isAuthenticated}
+                  isLiking={activeLikeUri === post.uri}
+                  isReposting={activeRepostUri === post.uri}
                 onToggleLike={async (targetPost) => {
                   if (!composer.isAuthenticated) {
                     setIsComposerOpen(true);
@@ -238,7 +258,100 @@ export default function BlueskyFeed({ onPreviewMedia, realtime = true }: Bluesky
                     setActiveRepostUri(null);
                   }
                 }}
-              />
+                />
+
+                {composer.isAuthenticated && (
+                <div className="ml-9 mr-2 mb-2 mt-1 rounded-md border border-border/70 bg-muted/20 p-2 space-y-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-[10px] text-muted-foreground">Reply in-app</p>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 px-1.5 text-[10px]"
+                      onClick={() => {
+                        setReplyDraftByUri((prev) => ({ ...prev, [post.uri]: '' }));
+                      }}
+                    >
+                      <MessageCircle className="h-2.5 w-2.5 mr-1" />
+                      Quick Reply
+                    </Button>
+                  </div>
+
+                  {Object.prototype.hasOwnProperty.call(replyDraftByUri, post.uri) && (
+                    <div className="space-y-1.5">
+                      <textarea
+                        value={replyDraftByUri[post.uri] ?? ''}
+                        onChange={(event) => {
+                          const next = event.target.value;
+                          setReplyDraftByUri((prev) => ({ ...prev, [post.uri]: next }));
+                        }}
+                        placeholder={`Reply to @${post.author.handle}`}
+                        className="w-full min-h-16 rounded-md border border-input bg-background px-2 py-1.5 text-[11px] leading-5 outline-none resize-y focus-visible:ring-2 focus-visible:ring-ring"
+                      />
+
+                      <div className="flex items-center justify-end gap-1.5">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 px-2 text-[10px]"
+                          onClick={() => {
+                            setReplyDraftByUri((prev) => {
+                              const next = { ...prev };
+                              delete next[post.uri];
+                              return next;
+                            });
+                          }}
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          className="h-6 px-2 text-[10px]"
+                          disabled={activeReplyUri === post.uri || !(replyDraftByUri[post.uri] ?? '').trim()}
+                          onClick={async () => {
+                            const draft = (replyDraftByUri[post.uri] ?? '').trim();
+                            if (!draft) {
+                              return;
+                            }
+
+                            setActiveReplyUri(post.uri);
+
+                            try {
+                              await composer.submitPost({
+                                textOverride: draft,
+                                mediaOverride: [],
+                                replyTo: {
+                                  parentUri: post.uri,
+                                  parentCid: post.cid,
+                                  rootUri: post.record?.reply?.root?.uri,
+                                  rootCid: post.record?.reply?.root?.cid,
+                                },
+                              });
+
+                              setReplyDraftByUri((prev) => {
+                                const next = { ...prev };
+                                delete next[post.uri];
+                                return next;
+                              });
+                              refresh();
+                            } catch {
+                              // error surfaced via composer state
+                            } finally {
+                              setActiveReplyUri(null);
+                            }
+                          }}
+                        >
+                          {activeReplyUri === post.uri ? 'Replying...' : 'Reply'}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                )}
+              </div>
             ))}
             
             {/* Load more trigger */}

@@ -17,46 +17,23 @@ interface ZoneConfig {
 
 const ZONES: ZoneConfig[] = [
   {
-    id: 'canada-vancouver',
-    label: 'Canada West (Vancouver)',
+    id: 'vancouver',
+    label: 'Vancouver (Host City)',
     timeZone: 'America/Vancouver',
-    appliesTo: 'Canada (BC), US Pacific states',
+    appliesTo: 'Canada Pacific Time (BC), US Pacific states',
     isCanada: true,
   },
   {
-    id: 'canada-edmonton',
-    label: 'Canada Mountain (Edmonton)',
-    timeZone: 'America/Edmonton',
-    appliesTo: 'Canada (AB), US Mountain states',
-    isCanada: true,
+    id: 'new-york',
+    label: 'New York',
+    timeZone: 'America/New_York',
+    appliesTo: 'US Eastern Time, parts of Canada East',
   },
   {
-    id: 'canada-winnipeg',
-    label: 'Canada Central (Winnipeg)',
-    timeZone: 'America/Winnipeg',
-    appliesTo: 'Canada (MB, SK), US Central states',
-    isCanada: true,
-  },
-  {
-    id: 'canada-toronto',
-    label: 'Canada East (Toronto)',
-    timeZone: 'America/Toronto',
-    appliesTo: 'Canada (ON, QC), US Eastern states',
-    isCanada: true,
-  },
-  {
-    id: 'canada-halifax',
-    label: 'Canada Atlantic (Halifax)',
-    timeZone: 'America/Halifax',
-    appliesTo: 'Canada Atlantic provinces',
-    isCanada: true,
-  },
-  {
-    id: 'canada-stjohns',
-    label: "Canada Newfoundland (St John's)",
-    timeZone: 'America/St_Johns',
-    appliesTo: 'Canada (Newfoundland and Labrador)',
-    isCanada: true,
+    id: 'mexico-city',
+    label: 'Mexico City',
+    timeZone: 'America/Mexico_City',
+    appliesTo: 'Mexico Central region',
   },
   {
     id: 'uk-london',
@@ -246,7 +223,7 @@ export default function TimezoneOverlay({ isOpen, onClose }: TimezoneOverlayProp
             </div>
             <div className="min-w-0">
               <p className="text-sm md:text-base font-semibold tracking-tight truncate">Conference Timezones</p>
-              <p className="text-[11px] md:text-xs text-muted-foreground truncate">Auto-updating local and Canada-centric event times</p>
+              <p className="text-[11px] md:text-xs text-muted-foreground truncate">Auto-updating local and Vancouver-centric event times</p>
             </div>
           </div>
 
@@ -256,7 +233,7 @@ export default function TimezoneOverlay({ isOpen, onClose }: TimezoneOverlayProp
         </div>
 
         <div className="px-4 py-3 border-b border-border/60 bg-muted/25 text-[11px] md:text-xs text-muted-foreground">
-          AtmosphereConf 2026 is in Canada. Use these rows to convert from your local timezone to conference time quickly.
+          AtmosphereConf is happening in Vancouver. Use these rows to convert from your local timezone to event time quickly.
         </div>
 
         <div className="p-3 md:p-4 overflow-y-auto max-h-[calc(92vh-108px)]">
