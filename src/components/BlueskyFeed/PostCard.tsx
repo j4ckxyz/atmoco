@@ -1,6 +1,5 @@
-import type { BlueskyPost } from '../../types';
+import type { BlueskyPost, MediaPreview } from '../../types';
 import { MessageCircle, Repeat2, Heart, ExternalLink, CornerDownRight, Quote, Play, GitBranch } from 'lucide-react';
-import type { MediaPreview } from '../../types';
 
 interface PostCardProps {
   post: BlueskyPost;

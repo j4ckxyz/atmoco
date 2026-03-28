@@ -1,40 +1,36 @@
 import { useState, useEffect } from 'react';
 import './App.css';
 import GridLayout from './components/GridLayout';
-import { MIN_DESKTOP_WIDTH } from './utils/config';
-import { Card, CardContent } from '@/components/ui/card';
+import MobileLayout from './components/MobileLayout';
+
+function detectMobileLikeView() {
+  const isNarrow = window.innerWidth < 1024;
+  const isShort = window.innerHeight < 700;
+  const coarsePointer = window.matchMedia('(pointer: coarse)').matches;
+  const userAgent = navigator.userAgent.toLowerCase();
+  const isMobileUA = /iphone|ipad|ipod|android|mobile|silk/.test(userAgent);
+
+  return isNarrow || isShort || coarsePointer || isMobileUA;
+}
 
 function App() {
-  const [isDesktop, setIsDesktop] = useState(window.innerWidth >= MIN_DESKTOP_WIDTH);
+  const [isMobileLike, setIsMobileLike] = useState(detectMobileLikeView());
 
   useEffect(() => {
     const handleResize = () => {
-      setIsDesktop(window.innerWidth >= MIN_DESKTOP_WIDTH);
+      setIsMobileLike(detectMobileLikeView());
     };
 
     window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    window.addEventListener('orientationchange', handleResize);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('orientationchange', handleResize);
+    };
   }, []);
 
-  if (!isDesktop) {
-    return (
-      <div className="flex items-center justify-center min-h-screen p-8">
-        <Card className="max-w-md">
-          <CardContent className="pt-6 text-center space-y-4">
-            <h1 className="text-2xl font-bold">Desktop Only</h1>
-            <p className="text-muted-foreground">
-              This AtmosphereConf multi-stream viewer requires a desktop screen.
-            </p>
-            <p className="text-sm text-muted-foreground">
-              Minimum width: {MIN_DESKTOP_WIDTH}px
-            </p>
-            <p className="text-sm text-muted-foreground">
-              Current width: {window.innerWidth}px
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-    );
+  if (isMobileLike) {
+    return <MobileLayout />;
   }
 
   return <GridLayout />;

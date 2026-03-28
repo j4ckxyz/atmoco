@@ -81,6 +81,8 @@
     line-height: 1.45;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    overscroll-behavior: none;
+    -webkit-tap-highlight-color: transparent;
   }
 
   ::selection {

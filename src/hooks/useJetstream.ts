@@ -5,9 +5,10 @@ import type { JetstreamEvent, JetstreamCommit } from '../types';
 interface UseJetstreamOptions {
   onPost?: (post: JetstreamCommit) => void;
   collections?: string[];
+  enabled?: boolean;
 }
 
-export function useJetstream({ onPost, collections = ['app.bsky.feed.post'] }: UseJetstreamOptions = {}) {
+export function useJetstream({ onPost, collections = ['app.bsky.feed.post'], enabled = true }: UseJetstreamOptions = {}) {
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
@@ -27,6 +28,11 @@ export function useJetstream({ onPost, collections = ['app.bsky.feed.post'] }: U
   }, [collections]);
 
   const connect = useCallback(() => {
+    if (!enabled) {
+      setIsConnected(false);
+      return;
+    }
+
     try {
       // Clean up existing connection
       if (wsRef.current) {
@@ -92,9 +98,22 @@ export function useJetstream({ onPost, collections = ['app.bsky.feed.post'] }: U
       console.error('Failed to create WebSocket:', err);
       setError('Failed to initialize connection');
     }
-  }, []); // No dependencies - stable connection
+  }, [enabled]);
 
   useEffect(() => {
+    if (!enabled) {
+      setIsConnected(false);
+      setError(null);
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+      }
+      if (wsRef.current) {
+        wsRef.current.close();
+        wsRef.current = null;
+      }
+      return;
+    }
+
     connect();
 
     return () => {
@@ -105,7 +124,7 @@ export function useJetstream({ onPost, collections = ['app.bsky.feed.post'] }: U
         wsRef.current.close();
       }
     };
-  }, [connect]);
+  }, [connect, enabled]);
 
   return {
     isConnected,

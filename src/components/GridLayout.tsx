@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ThemeToggle } from '@/components/theme-toggle';
 import type { MediaPreview } from '../types';
 import { useEffect, useState } from 'react';
+import MediaPreviewOverlay from './MediaPreviewOverlay';
 
 export default function GridLayout() {
   const [previewMedia, setPreviewMedia] = useState<MediaPreview | null>(null);
@@ -22,45 +23,22 @@ export default function GridLayout() {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [previewMedia]);
 
+  useEffect(() => {
+    if (!previewMedia) {
+      return;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [previewMedia]);
+
   return (
     <div className="app-shell h-screen w-screen overflow-hidden flex flex-col">
-      {previewMedia && (
-        <div
-          className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-6"
-          onClick={() => setPreviewMedia(null)}
-          role="button"
-          tabIndex={0}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter' || event.key === ' ') {
-              setPreviewMedia(null);
-            }
-          }}
-          aria-label="Close media preview"
-        >
-          <div
-            className="max-w-[80vw] max-h-[80vh] w-full flex items-center justify-center"
-            onClick={(event) => event.stopPropagation()}
-          >
-            {previewMedia.type === 'image' ? (
-              <img
-                src={previewMedia.src}
-                alt={previewMedia.alt || 'Media preview'}
-                className="max-w-full max-h-[80vh] object-contain rounded-lg shadow-2xl"
-              />
-            ) : (
-              <video
-                src={previewMedia.src}
-                poster={previewMedia.poster}
-                className="max-w-full max-h-[80vh] rounded-lg shadow-2xl"
-                controls
-                autoPlay
-              >
-                Your browser does not support the video tag.
-              </video>
-            )}
-          </div>
-        </div>
-      )}
+      <MediaPreviewOverlay media={previewMedia} onClose={() => setPreviewMedia(null)} />
 
       {/* Header */}
       <div className="glass-panel border-b border-border/70 px-4 py-2 flex-shrink-0 shadow-sm">

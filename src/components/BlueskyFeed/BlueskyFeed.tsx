@@ -4,17 +4,27 @@ import PostCard from './PostCard';
 import LoadingSpinner from '../LoadingSpinner';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { useCallback, useRef, useEffect } from 'react';
+import { useCallback, useRef, useEffect, useState } from 'react';
 import type { MediaPreview } from '../../types';
+import { Feather } from 'lucide-react';
+import ComposerOverlay from './ComposerOverlay';
+import { usePostComposer } from '@/hooks/usePostComposer';
+import { FEED_POLL_INTERVAL } from '@/utils/config';
 
 interface BlueskyFeedProps {
   onPreviewMedia?: (media: MediaPreview) => void;
+  realtime?: boolean;
 }
 
-export default function BlueskyFeed({ onPreviewMedia }: BlueskyFeedProps) {
-  const { posts, isLoading, isLoadingMore, error, refresh, loadMore, hasMore } = useBlueskyFeed();
+export default function BlueskyFeed({ onPreviewMedia, realtime = true }: BlueskyFeedProps) {
+  const { posts, isLoading, isLoadingMore, error, refresh, loadMore, hasMore } = useBlueskyFeed({
+    pollIntervalMs: realtime ? FEED_POLL_INTERVAL : FEED_POLL_INTERVAL * 3,
+  });
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
+  const [isComposerOpen, setIsComposerOpen] = useState(false);
+
+  const composer = usePostComposer();
 
   // Listen to Jetstream for new posts (will trigger refresh via polling)
   const handleNewPost = useCallback(() => {
@@ -26,7 +36,12 @@ export default function BlueskyFeed({ onPreviewMedia }: BlueskyFeedProps) {
   const { isConnected } = useJetstream({
     onPost: handleNewPost,
     collections: ['app.bsky.feed.post'],
+    enabled: realtime,
   });
+
+  useEffect(() => {
+    void composer.restoreSession();
+  }, [composer.restoreSession]);
 
   // Intersection Observer for infinite scroll
   useEffect(() => {
@@ -53,13 +68,13 @@ export default function BlueskyFeed({ onPreviewMedia }: BlueskyFeedProps) {
   }, [hasMore, isLoadingMore, loadMore]);
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-full flex flex-col relative">
       {/* Status bar */}
       <div className="px-2 py-1.5 border-b border-border/70 flex items-center justify-between bg-muted/35">
         <div className="flex items-center gap-1.5 text-[10px]">
           <span className={`h-1.5 w-1.5 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></span>
           <span className="text-muted-foreground font-medium">
-            {isConnected ? 'Live' : 'Offline'}
+            {realtime ? (isConnected ? 'Live' : 'Offline') : 'Mobile mode'}
           </span>
         </div>
         <Button
@@ -119,6 +134,44 @@ export default function BlueskyFeed({ onPreviewMedia }: BlueskyFeedProps) {
       <div className="px-3 py-1.5 border-t border-border/70 text-[10px] text-muted-foreground text-center bg-muted/35">
         {posts.length} {posts.length === 1 ? 'post' : 'posts'}
       </div>
+
+      <Button
+        type="button"
+        size="icon"
+        className="absolute bottom-8 right-3 h-9 w-9 rounded-full shadow-md z-30"
+        onClick={() => setIsComposerOpen(true)}
+        title="Create a Bluesky post"
+      >
+        <Feather className="h-4 w-4" />
+      </Button>
+
+      <ComposerOverlay
+        isOpen={isComposerOpen}
+        onClose={() => setIsComposerOpen(false)}
+        isAuthenticated={composer.isAuthenticated}
+        signedInHandle={composer.session?.handle}
+        signedInDid={composer.session?.did}
+        isAuthLoading={composer.isAuthLoading}
+        authError={composer.authError}
+        onLogin={composer.login}
+        onLogout={composer.logout}
+        text={composer.text}
+        onTextChange={composer.setText}
+        media={composer.media}
+        onAddFiles={composer.addFiles}
+        onRemoveMedia={composer.removeMedia}
+        onUpdateMediaAlt={composer.updateMediaAlt}
+        isPosting={composer.isPosting}
+        postError={composer.postError}
+        onSubmit={async () => {
+          await composer.submitPost();
+          refresh();
+        }}
+        mentionSuggestions={composer.mentionSuggestions}
+        isMentionLoading={composer.isMentionLoading}
+        onMentionQuery={composer.fetchMentionSuggestions}
+        promoteText={composer.promoteText}
+      />
     </div>
   );
 }

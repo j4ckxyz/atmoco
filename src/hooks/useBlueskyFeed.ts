@@ -3,7 +3,11 @@ import { BskyAgent } from '@atproto/api';
 import { ATMOCO_FEED_URI, BLUESKY_API_URL, FEED_POLL_INTERVAL } from '../utils/config';
 import type { BlueskyPost } from '../types';
 
-export function useBlueskyFeed() {
+interface UseBlueskyFeedOptions {
+  pollIntervalMs?: number;
+}
+
+export function useBlueskyFeed({ pollIntervalMs = FEED_POLL_INTERVAL }: UseBlueskyFeedOptions = {}) {
   const [posts, setPosts] = useState<BlueskyPost[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -84,10 +88,10 @@ export function useBlueskyFeed() {
   useEffect(() => {
     const interval = setInterval(() => {
       fetchFeed();
-    }, FEED_POLL_INTERVAL);
+    }, pollIntervalMs);
 
     return () => clearInterval(interval);
-  }, [fetchFeed]);
+  }, [fetchFeed, pollIntervalMs]);
 
   // Manual refresh function
   const refresh = useCallback(() => {
