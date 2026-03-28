@@ -1,0 +1,100 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Light mode - using your brand colors */
+    --background: 0 0% 100%; /* white */
+    --foreground: 222.2 84% 4.9%; /* dark text */
+
+    --card: 0 0% 100%; /* white */
+    --card-foreground: 222.2 84% 4.9%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+
+    --primary: 209 100% 62%; /* #3F97FF - main blue */
+    --primary-foreground: 0 0% 100%; /* white text on blue */
+
+    --secondary: 209 100% 97%; /* #F0F7FF - pale blue */
+    --secondary-foreground: 209 100% 62%; /* blue text on pale blue */
+
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+
+    --accent: 209 100% 97%; /* #F0F7FF */
+    --accent-foreground: 209 100% 62%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 209 100% 62%; /* #3F97FF */
+
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    /* Dark mode - tweaked versions */
+    --background: 222.2 84% 4.9%; /* very dark blue-gray */
+    --foreground: 0 0% 100%; /* white */
+
+    --card: 217.2 32.6% 10%; /* dark card */
+    --card-foreground: 0 0% 100%;
+
+    --popover: 217.2 32.6% 10%;
+    --popover-foreground: 0 0% 100%;
+
+    --primary: 209 100% 62%; /* #3F97FF - same blue */
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 209 100% 15%; /* darker blue for dark mode */
+    --secondary-foreground: 209 100% 80%; /* lighter blue text */
+
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+
+    --accent: 209 100% 20%; /* darker accent */
+    --accent-foreground: 209 100% 80%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 209 100% 62%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+      'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+      sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+/* Custom scrollbar for feed */
+.feed-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+
+.feed-scroll::-webkit-scrollbar-track {
+  @apply bg-muted;
+}
+
+.feed-scroll::-webkit-scrollbar-thumb {
+  @apply bg-border rounded;
+}
+
+.feed-scroll::-webkit-scrollbar-thumb:hover {
+  @apply bg-primary/30;
+}
