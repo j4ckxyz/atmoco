@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
+import { createPortal } from 'react-dom';
 import { Button } from '@/components/ui/button';
 import { Camera, Loader2, MessageSquare, ExternalLink, X, Minus, Plus, GripHorizontal } from 'lucide-react';
 import LoadingSpinner from './LoadingSpinner';
@@ -46,6 +47,20 @@ function clampLayout(layout: ChatWindowLayout): ChatWindowLayout {
     x: Math.max(6, Math.min(layout.x, maxX)),
     y: Math.max(6, Math.min(layout.y, maxY)),
   };
+}
+
+function getLayoutForStream(streamRect?: DOMRect): ChatWindowLayout {
+  const fallback = getDefaultChatLayout();
+  if (!streamRect) {
+    return fallback;
+  }
+
+  return clampLayout({
+    width: Math.min(420, Math.max(300, Math.floor(streamRect.width * 0.68))),
+    height: Math.min(560, Math.max(340, Math.floor(streamRect.height * 0.98))),
+    x: Math.floor(streamRect.left + 14),
+    y: Math.floor(streamRect.top + 14),
+  });
 }
 
 interface StreamPlayerProps {
@@ -154,6 +169,12 @@ export default function StreamPlayer({ handle }: StreamPlayerProps) {
     setIsLoading(false);
   };
 
+  const openChatWindow = () => {
+    const rect = containerRef.current?.getBoundingClientRect();
+    setChatLayout(getLayoutForStream(rect));
+    setIsChatOpen(true);
+  };
+
   const takeScreenshot = async () => {
     if (!containerRef.current || isCapturing) return;
     
@@ -249,96 +270,162 @@ export default function StreamPlayer({ handle }: StreamPlayerProps) {
         </div>
       )}
 
-      {isChatOpen && (
-        <div
-          className="fixed inset-0 z-50 pointer-events-none"
-        >
-          <div
-            className="absolute rounded-xl border border-border/70 bg-card/95 backdrop-blur-md shadow-2xl overflow-hidden pointer-events-auto"
-            style={{
-              left: `${chatLayout.x}px`,
-              top: `${chatLayout.y}px`,
-              width: `${chatLayout.width}px`,
-              height: `${chatLayout.height}px`,
-            }}
-          >
+      {typeof document !== 'undefined' && isChatOpen && createPortal(
+        isTouchDevice ? (
+          <div className="fixed inset-0 z-[70] bg-black/55 backdrop-blur-sm p-2" onClick={() => setIsChatOpen(false)}>
             <div
-              className="h-11 px-3 border-b border-border/70 flex items-center justify-between gap-2 cursor-grab active:cursor-grabbing select-none"
-              onPointerDown={handleChatDragStart}
-              title="Drag chat window"
+              className="h-full w-full rounded-xl border border-border/70 bg-card/95 backdrop-blur-md shadow-2xl overflow-hidden"
+              onClick={(event) => event.stopPropagation()}
             >
-              <div className="min-w-0">
-                <p className="text-xs font-semibold truncate">Live Chat</p>
-                <p className="text-[10px] text-muted-foreground truncate">@{handle}</p>
-              </div>
-
-              <div className="text-muted-foreground/70 hidden md:flex">
-                <GripHorizontal className="h-3.5 w-3.5" />
-              </div>
-
-              <div className="flex items-center gap-1">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7"
-                  onClick={() => setChatScale((previous) => Math.max(MIN_CHAT_SCALE, Number((previous - CHAT_SCALE_STEP).toFixed(2))))}
-                  title="Smaller text"
-                >
-                  <Minus className="h-3.5 w-3.5" />
-                </Button>
-                <div className="w-10 text-center text-[10px] text-muted-foreground tabular-nums">
-                  {Math.round(chatScale * 100)}%
+              <div className="h-11 px-3 border-b border-border/70 flex items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold truncate">Live Chat</p>
+                  <p className="text-[10px] text-muted-foreground truncate">@{handle}</p>
                 </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7"
-                  onClick={() => setChatScale((previous) => Math.min(MAX_CHAT_SCALE, Number((previous + CHAT_SCALE_STEP).toFixed(2))))}
-                  title="Bigger text"
-                >
-                  <Plus className="h-3.5 w-3.5" />
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7"
-                  onClick={() => window.open(chatUrl, '_blank', 'noopener,noreferrer')}
-                  title="Open chat in new tab"
-                >
-                  <ExternalLink className="h-3.5 w-3.5" />
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7"
-                  onClick={() => setIsChatOpen(false)}
-                  title="Close chat"
-                >
-                  <X className="h-3.5 w-3.5" />
-                </Button>
-              </div>
-            </div>
 
-            <div className="relative h-[calc(100%-44px)] overflow-hidden bg-black">
-              <iframe
-                src={chatUrl}
-                title={`Stream chat for ${handle}`}
-                className="absolute left-0 top-0 border-0"
-                style={{
-                  width: `${100 / chatScale}%`,
-                  height: `${100 / chatScale}%`,
-                  transform: `scale(${chatScale})`,
-                  transformOrigin: 'top left',
-                }}
-                allow="clipboard-read; clipboard-write"
-              />
+                <div className="flex items-center gap-1">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={() => setChatScale((previous) => Math.max(MIN_CHAT_SCALE, Number((previous - CHAT_SCALE_STEP).toFixed(2))))}
+                    title="Smaller text"
+                  >
+                    <Minus className="h-3.5 w-3.5" />
+                  </Button>
+                  <div className="w-10 text-center text-[10px] text-muted-foreground tabular-nums">
+                    {Math.round(chatScale * 100)}%
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={() => setChatScale((previous) => Math.min(MAX_CHAT_SCALE, Number((previous + CHAT_SCALE_STEP).toFixed(2))))}
+                    title="Bigger text"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={() => setIsChatOpen(false)}
+                    title="Close chat"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              </div>
+
+              <div className="relative h-[calc(100%-44px)] overflow-hidden bg-black">
+                <iframe
+                  src={chatUrl}
+                  title={`Stream chat for ${handle}`}
+                  className="absolute left-0 top-0 border-0"
+                  style={{
+                    width: `${100 / chatScale}%`,
+                    height: `${100 / chatScale}%`,
+                    transform: `scale(${chatScale})`,
+                    transformOrigin: 'top left',
+                  }}
+                  allow="clipboard-read; clipboard-write"
+                />
+              </div>
             </div>
           </div>
-        </div>
+        ) : (
+          <div className="fixed inset-0 z-[70] pointer-events-none">
+            <div
+              className="absolute rounded-xl border border-border/70 bg-card/95 backdrop-blur-md shadow-2xl overflow-hidden pointer-events-auto"
+              style={{
+                left: `${chatLayout.x}px`,
+                top: `${chatLayout.y}px`,
+                width: `${chatLayout.width}px`,
+                height: `${chatLayout.height}px`,
+              }}
+            >
+              <div
+                className="h-11 px-3 border-b border-border/70 flex items-center justify-between gap-2 cursor-grab active:cursor-grabbing select-none"
+                onPointerDown={handleChatDragStart}
+                title="Drag chat window"
+              >
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold truncate">Live Chat</p>
+                  <p className="text-[10px] text-muted-foreground truncate">@{handle}</p>
+                </div>
+
+                <div className="text-muted-foreground/70 hidden md:flex">
+                  <GripHorizontal className="h-3.5 w-3.5" />
+                </div>
+
+                <div className="flex items-center gap-1">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={() => setChatScale((previous) => Math.max(MIN_CHAT_SCALE, Number((previous - CHAT_SCALE_STEP).toFixed(2))))}
+                    title="Smaller text"
+                  >
+                    <Minus className="h-3.5 w-3.5" />
+                  </Button>
+                  <div className="w-10 text-center text-[10px] text-muted-foreground tabular-nums">
+                    {Math.round(chatScale * 100)}%
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={() => setChatScale((previous) => Math.min(MAX_CHAT_SCALE, Number((previous + CHAT_SCALE_STEP).toFixed(2))))}
+                    title="Bigger text"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={() => window.open(chatUrl, '_blank', 'noopener,noreferrer')}
+                    title="Open chat in new tab"
+                  >
+                    <ExternalLink className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={() => setIsChatOpen(false)}
+                    title="Close chat"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              </div>
+
+              <div className="relative h-[calc(100%-44px)] overflow-hidden bg-black">
+                <iframe
+                  src={chatUrl}
+                  title={`Stream chat for ${handle}`}
+                  className="absolute left-0 top-0 border-0"
+                  style={{
+                    width: `${100 / chatScale}%`,
+                    height: `${100 / chatScale}%`,
+                    transform: `scale(${chatScale})`,
+                    transformOrigin: 'top left',
+                  }}
+                  allow="clipboard-read; clipboard-write"
+                />
+              </div>
+            </div>
+          </div>
+        ),
+        document.body,
       )}
 
       {/* Floating controls overlay */}
@@ -347,7 +434,7 @@ export default function StreamPlayer({ handle }: StreamPlayerProps) {
           <Button
             size="icon"
             variant="secondary"
-            onClick={() => setIsChatOpen(true)}
+            onClick={openChatWindow}
             className="bg-background/90 backdrop-blur-sm hover:bg-background rounded-md shadow-sm"
             title="Open stream chat"
           >
