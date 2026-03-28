@@ -17,11 +17,17 @@ interface BlueskyFeedProps {
   realtime?: boolean;
 }
 
+interface InteractionCacheEntry {
+  like?: string | null;
+  repost?: string | null;
+}
+
 export default function BlueskyFeed({ onPreviewMedia, realtime = true }: BlueskyFeedProps) {
   const { posts, isLoading, isLoadingMore, error, refresh, loadMore, hasMore } = useBlueskyFeed({
     pollIntervalMs: realtime ? FEED_POLL_INTERVAL : FEED_POLL_INTERVAL * 3,
   });
   const [interactionPosts, setInteractionPosts] = useState<BlueskyPost[]>([]);
+  const [interactionCache, setInteractionCache] = useState<Record<string, InteractionCacheEntry>>({});
   const [activeLikeUri, setActiveLikeUri] = useState<string | null>(null);
   const [activeRepostUri, setActiveRepostUri] = useState<string | null>(null);
   const [activeReplyUri, setActiveReplyUri] = useState<string | null>(null);
@@ -32,9 +38,34 @@ export default function BlueskyFeed({ onPreviewMedia, realtime = true }: Bluesky
 
   const composer = usePostComposer();
 
+  const applyInteractionCache = useCallback(
+    (incomingPosts: BlueskyPost[]) => {
+      return incomingPosts.map((post) => {
+        const cached = interactionCache[post.uri];
+        if (!cached) {
+          return post;
+        }
+
+        const viewer = { ...(post.viewer ?? {}) };
+        if (Object.prototype.hasOwnProperty.call(cached, 'like')) {
+          viewer.like = cached.like ?? undefined;
+        }
+        if (Object.prototype.hasOwnProperty.call(cached, 'repost')) {
+          viewer.repost = cached.repost ?? undefined;
+        }
+
+        return {
+          ...post,
+          viewer,
+        };
+      });
+    },
+    [interactionCache],
+  );
+
   useEffect(() => {
-    setInteractionPosts(posts);
-  }, [posts]);
+    setInteractionPosts(applyInteractionCache(posts));
+  }, [applyInteractionCache, posts]);
 
   useEffect(() => {
     if (!composer.isAuthenticated || posts.length === 0) {
@@ -44,14 +75,20 @@ export default function BlueskyFeed({ onPreviewMedia, realtime = true }: Bluesky
     let isCancelled = false;
     void composer.hydrateViewerState(posts).then((hydrated) => {
       if (!isCancelled) {
-        setInteractionPosts(hydrated);
+        setInteractionPosts(applyInteractionCache(hydrated));
       }
     });
 
     return () => {
       isCancelled = true;
     };
-  }, [composer.hydrateViewerState, composer.isAuthenticated, posts]);
+  }, [applyInteractionCache, composer.hydrateViewerState, composer.isAuthenticated, posts]);
+
+  useEffect(() => {
+    if (!composer.isAuthenticated) {
+      setInteractionCache({});
+    }
+  }, [composer.isAuthenticated]);
 
   // Listen to Jetstream for new posts (will trigger refresh via polling)
   const handleNewPost = useCallback(() => {
@@ -172,6 +209,7 @@ export default function BlueskyFeed({ onPreviewMedia, realtime = true }: Bluesky
                   const optimisticLikeActive = !Boolean(targetPost.viewer?.like);
                   const optimisticLikeCount = Math.max(0, (targetPost.likeCount ?? 0) + (optimisticLikeActive ? 1 : -1));
                   const pendingLikeToken = `pending-like-${targetPost.uri}`;
+                  const previousCachedLike = interactionCache[targetPost.uri]?.like;
 
                   setInteractionPosts((prev) => prev.map((candidate) => {
                     if (candidate.uri !== targetPost.uri) {
@@ -186,6 +224,14 @@ export default function BlueskyFeed({ onPreviewMedia, realtime = true }: Bluesky
                         like: optimisticLikeActive ? pendingLikeToken : undefined,
                       },
                     };
+                  }));
+
+                  setInteractionCache((prev) => ({
+                    ...prev,
+                    [targetPost.uri]: {
+                      ...prev[targetPost.uri],
+                      like: optimisticLikeActive ? pendingLikeToken : null,
+                    },
                   }));
 
                   try {
@@ -211,8 +257,35 @@ export default function BlueskyFeed({ onPreviewMedia, realtime = true }: Bluesky
                         },
                       };
                     }));
+
+                    setInteractionCache((prev) => ({
+                      ...prev,
+                      [targetPost.uri]: {
+                        ...prev[targetPost.uri],
+                        like: result.active ? (result.recordUri ?? pendingLikeToken) : null,
+                      },
+                    }));
                   } catch {
                     setInteractionPosts((prev) => prev.map((candidate) => candidate.uri === previousPost.uri ? previousPost : candidate));
+
+                    setInteractionCache((prev) => {
+                      const next = { ...prev };
+                      const current = { ...(next[targetPost.uri] ?? {}) };
+
+                      if (previousCachedLike === undefined) {
+                        delete current.like;
+                      } else {
+                        current.like = previousCachedLike;
+                      }
+
+                      if (Object.keys(current).length === 0) {
+                        delete next[targetPost.uri];
+                      } else {
+                        next[targetPost.uri] = current;
+                      }
+
+                      return next;
+                    });
                   } finally {
                     setActiveLikeUri(null);
                   }
@@ -229,6 +302,7 @@ export default function BlueskyFeed({ onPreviewMedia, realtime = true }: Bluesky
                   const optimisticRepostActive = !Boolean(targetPost.viewer?.repost);
                   const optimisticRepostCount = Math.max(0, (targetPost.repostCount ?? 0) + (optimisticRepostActive ? 1 : -1));
                   const pendingRepostToken = `pending-repost-${targetPost.uri}`;
+                  const previousCachedRepost = interactionCache[targetPost.uri]?.repost;
 
                   setInteractionPosts((prev) => prev.map((candidate) => {
                     if (candidate.uri !== targetPost.uri) {
@@ -243,6 +317,14 @@ export default function BlueskyFeed({ onPreviewMedia, realtime = true }: Bluesky
                         repost: optimisticRepostActive ? pendingRepostToken : undefined,
                       },
                     };
+                  }));
+
+                  setInteractionCache((prev) => ({
+                    ...prev,
+                    [targetPost.uri]: {
+                      ...prev[targetPost.uri],
+                      repost: optimisticRepostActive ? pendingRepostToken : null,
+                    },
                   }));
 
                   try {
@@ -268,8 +350,35 @@ export default function BlueskyFeed({ onPreviewMedia, realtime = true }: Bluesky
                         },
                       };
                     }));
+
+                    setInteractionCache((prev) => ({
+                      ...prev,
+                      [targetPost.uri]: {
+                        ...prev[targetPost.uri],
+                        repost: result.active ? (result.recordUri ?? pendingRepostToken) : null,
+                      },
+                    }));
                   } catch {
                     setInteractionPosts((prev) => prev.map((candidate) => candidate.uri === previousPost.uri ? previousPost : candidate));
+
+                    setInteractionCache((prev) => {
+                      const next = { ...prev };
+                      const current = { ...(next[targetPost.uri] ?? {}) };
+
+                      if (previousCachedRepost === undefined) {
+                        delete current.repost;
+                      } else {
+                        current.repost = previousCachedRepost;
+                      }
+
+                      if (Object.keys(current).length === 0) {
+                        delete next[targetPost.uri];
+                      } else {
+                        next[targetPost.uri] = current;
+                      }
+
+                      return next;
+                    });
                   } finally {
                     setActiveRepostUri(null);
                   }
