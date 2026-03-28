@@ -3,10 +3,65 @@ import BlueskyFeed from './BlueskyFeed/BlueskyFeed';
 import { STREAM_HANDLES } from '../utils/config';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ThemeToggle } from '@/components/theme-toggle';
+import type { MediaPreview } from '../types';
+import { useEffect, useState } from 'react';
 
 export default function GridLayout() {
+  const [previewMedia, setPreviewMedia] = useState<MediaPreview | null>(null);
+
+  useEffect(() => {
+    if (!previewMedia) return;
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setPreviewMedia(null);
+      }
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [previewMedia]);
+
   return (
     <div className="app-shell h-screen w-screen overflow-hidden flex flex-col">
+      {previewMedia && (
+        <div
+          className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-6"
+          onClick={() => setPreviewMedia(null)}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              setPreviewMedia(null);
+            }
+          }}
+          aria-label="Close media preview"
+        >
+          <div
+            className="max-w-[80vw] max-h-[80vh] w-full flex items-center justify-center"
+            onClick={(event) => event.stopPropagation()}
+          >
+            {previewMedia.type === 'image' ? (
+              <img
+                src={previewMedia.src}
+                alt={previewMedia.alt || 'Media preview'}
+                className="max-w-full max-h-[80vh] object-contain rounded-lg shadow-2xl"
+              />
+            ) : (
+              <video
+                src={previewMedia.src}
+                poster={previewMedia.poster}
+                className="max-w-full max-h-[80vh] rounded-lg shadow-2xl"
+                controls
+                autoPlay
+              >
+                Your browser does not support the video tag.
+              </video>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="glass-panel border-b border-border/70 px-4 py-2 flex-shrink-0 shadow-sm">
         <div className="flex items-center justify-between gap-4">
@@ -75,7 +130,7 @@ export default function GridLayout() {
             </div>
           </CardHeader>
           <CardContent className="p-0 flex-1 overflow-hidden min-h-0">
-            <BlueskyFeed />
+            <BlueskyFeed onPreviewMedia={setPreviewMedia} />
           </CardContent>
         </Card>
       </div>

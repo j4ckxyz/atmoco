@@ -5,8 +5,13 @@ import LoadingSpinner from '../LoadingSpinner';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useCallback, useRef, useEffect } from 'react';
+import type { MediaPreview } from '../../types';
 
-export default function BlueskyFeed() {
+interface BlueskyFeedProps {
+  onPreviewMedia?: (media: MediaPreview) => void;
+}
+
+export default function BlueskyFeed({ onPreviewMedia }: BlueskyFeedProps) {
   const { posts, isLoading, isLoadingMore, error, refresh, loadMore, hasMore } = useBlueskyFeed();
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
@@ -89,7 +94,7 @@ export default function BlueskyFeed() {
         ) : (
           <div className="divide-y divide-border/65">
             {posts.map((post) => (
-              <PostCard key={post.uri} post={post} />
+              <PostCard key={post.uri} post={post} onPreviewMedia={onPreviewMedia} />
             ))}
             
             {/* Load more trigger */}

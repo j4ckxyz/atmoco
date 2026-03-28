@@ -64,3 +64,10 @@ export interface BlueskyPost {
 export interface FeedPost {
   post: BlueskyPost;
 }
+
+export interface MediaPreview {
+  type: 'image' | 'video';
+  src: string;
+  alt?: string;
+  poster?: string;
+}

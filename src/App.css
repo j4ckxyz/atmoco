@@ -40,32 +40,32 @@
 
   .dark {
     /* Dark mode - tweaked versions */
-    --background: 222.2 84% 4.9%; /* very dark blue-gray */
+    --background: 222 47% 3.2%; /* deeper dark base */
     --foreground: 0 0% 100%; /* white */
 
-    --card: 217.2 32.6% 10%; /* dark card */
+    --card: 220 30% 8.2%; /* darker card */
     --card-foreground: 0 0% 100%;
 
-    --popover: 217.2 32.6% 10%;
+    --popover: 220 30% 8.2%;
     --popover-foreground: 0 0% 100%;
 
     --primary: 209 100% 62%; /* #3F97FF - same blue */
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 209 100% 15%; /* darker blue for dark mode */
+    --secondary: 210 56% 13%; /* darker blue for dark mode */
     --secondary-foreground: 209 100% 80%; /* lighter blue text */
 
-    --muted: 217.2 32.6% 17.5%;
+    --muted: 219 24% 13%;
     --muted-foreground: 215 20.2% 65.1%;
 
-    --accent: 209 100% 20%; /* darker accent */
+    --accent: 210 55% 16%; /* darker accent */
     --accent-foreground: 209 100% 80%;
 
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
+    --border: 219 24% 16%;
+    --input: 219 24% 16%;
     --ring: 209 100% 62%;
   }
 }
@@ -95,8 +95,8 @@
 
 .app-shell {
   background:
-    radial-gradient(1200px 400px at 20% -10%, hsl(var(--primary) / 0.12), transparent 60%),
-    radial-gradient(1000px 300px at 100% 110%, hsl(var(--primary) / 0.09), transparent 60%),
+    radial-gradient(1200px 400px at 20% -10%, hsl(var(--primary) / 0.1), transparent 60%),
+    radial-gradient(1000px 300px at 100% 110%, hsl(var(--primary) / 0.08), transparent 60%),
     hsl(var(--background));
 }
 
