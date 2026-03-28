@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Volume2, VolumeX, Camera, Loader2 } from 'lucide-react';
+import { Camera, Loader2 } from 'lucide-react';
 import LoadingSpinner from './LoadingSpinner';
 import html2canvas from 'html2canvas';
 
@@ -13,7 +13,6 @@ export default function StreamPlayer({ handle }: StreamPlayerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
-  const [isMuted, setIsMuted] = useState(true); // Start muted
   const [showControls, setShowControls] = useState(false);
   const [isCapturing, setIsCapturing] = useState(false);
 
@@ -30,13 +29,6 @@ export default function StreamPlayer({ handle }: StreamPlayerProps) {
   const handleError = () => {
     setHasError(true);
     setIsLoading(false);
-  };
-
-  const toggleMute = () => {
-    setIsMuted(!isMuted);
-    // Note: Due to iframe cross-origin restrictions, we can't directly control the audio
-    // Users will need to click the stream's native controls or we need to reload with muted param
-    // For now, this is a visual indicator
   };
 
   const takeScreenshot = async () => {
@@ -137,15 +129,6 @@ export default function StreamPlayer({ handle }: StreamPlayerProps) {
       {/* Floating controls overlay */}
       {!isLoading && !hasError && showControls && (
         <div className="screenshot-controls absolute top-2 right-2 z-20 flex gap-2">
-          <Button
-            size="icon"
-            variant="secondary"
-            onClick={toggleMute}
-            className="bg-background/90 backdrop-blur-sm hover:bg-background"
-            title={isMuted ? "Unmute" : "Mute"}
-          >
-            {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-          </Button>
           <Button
             size="icon"
             variant="secondary"

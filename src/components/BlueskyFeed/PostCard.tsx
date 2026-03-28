@@ -6,7 +6,7 @@ interface PostCardProps {
 }
 
 export default function PostCard({ post }: PostCardProps) {
-  const { author, record, uri, likeCount, repostCount, replyCount } = post;
+  const { author, record, uri, likeCount, repostCount, replyCount, embed } = post;
   
   // Create Bluesky web URL from AT URI
   const getPostUrl = (atUri: string) => {
@@ -35,6 +35,18 @@ export default function PostCard({ post }: PostCardProps) {
     
     return date.toLocaleDateString();
   };
+
+  const embedType = embed?.$type as string | undefined;
+  const isImages = embedType === 'app.bsky.embed.images#view';
+  const isExternal = embedType === 'app.bsky.embed.external#view';
+  const isVideo = embedType === 'app.bsky.embed.video#view';
+  const isRecordWithMedia = embedType === 'app.bsky.embed.recordWithMedia#view';
+
+  const mediaEmbed = isRecordWithMedia ? embed?.media : embed;
+  const mediaType = mediaEmbed?.$type as string | undefined;
+  const mediaIsImages = mediaType === 'app.bsky.embed.images#view';
+  const mediaIsExternal = mediaType === 'app.bsky.embed.external#view';
+  const mediaIsVideo = mediaType === 'app.bsky.embed.video#view';
 
   return (
     <div className="p-2 hover:bg-accent/50 transition-colors">
@@ -71,17 +83,17 @@ export default function PostCard({ post }: PostCardProps) {
       </div>
 
       {/* Media embeds */}
-      {record.embed && (
+      {embed && (
         <div className="ml-9 mb-1.5">
           {/* Images */}
-          {record.embed.$type === 'app.bsky.embed.images' && record.embed.images && (
+          {(isImages || mediaIsImages) && (mediaEmbed?.images || embed?.images) && (
             <div className={`grid gap-1 ${
-              record.embed.images.length === 1 ? 'grid-cols-1' : 
-              record.embed.images.length === 2 ? 'grid-cols-2' :
-              record.embed.images.length === 3 ? 'grid-cols-3' :
+              (mediaEmbed?.images || embed?.images).length === 1 ? 'grid-cols-1' : 
+              (mediaEmbed?.images || embed?.images).length === 2 ? 'grid-cols-2' :
+              (mediaEmbed?.images || embed?.images).length === 3 ? 'grid-cols-3' :
               'grid-cols-2'
             }`}>
-              {record.embed.images.map((img, idx) => (
+              {(mediaEmbed?.images || embed?.images).map((img: any, idx: number) => (
                 <div key={idx} className="relative overflow-hidden rounded border bg-muted">
                   <img
                     src={img.thumb}
@@ -95,28 +107,28 @@ export default function PostCard({ post }: PostCardProps) {
           )}
 
           {/* External link preview */}
-          {record.embed.$type === 'app.bsky.embed.external' && record.embed.external && (
+          {(isExternal || mediaIsExternal) && (mediaEmbed?.external || embed?.external) && (
             <a
-              href={record.embed.external.uri}
+              href={(mediaEmbed?.external || embed?.external).uri}
               target="_blank"
               rel="noopener noreferrer"
               className="block border rounded overflow-hidden hover:bg-accent/50 transition-colors"
             >
-              {record.embed.external.thumb && (
+              {(mediaEmbed?.external || embed?.external).thumb && (
                 <img
-                  src={record.embed.external.thumb}
-                  alt={record.embed.external.title}
+                  src={(mediaEmbed?.external || embed?.external).thumb}
+                  alt={(mediaEmbed?.external || embed?.external).title}
                   className="w-full h-24 object-cover"
                   loading="lazy"
                 />
               )}
               <div className="p-2">
                 <div className="text-xs font-medium line-clamp-1">
-                  {record.embed.external.title}
+                  {(mediaEmbed?.external || embed?.external).title}
                 </div>
-                {record.embed.external.description && (
+                {(mediaEmbed?.external || embed?.external).description && (
                   <div className="text-[10px] text-muted-foreground line-clamp-2 mt-0.5">
-                    {record.embed.external.description}
+                    {(mediaEmbed?.external || embed?.external).description}
                   </div>
                 )}
               </div>
@@ -124,12 +136,12 @@ export default function PostCard({ post }: PostCardProps) {
           )}
 
           {/* Video - show thumbnail with play indicator */}
-          {record.embed.$type === 'app.bsky.embed.video' && record.embed.video && (
+          {(isVideo || mediaIsVideo) && (mediaEmbed || embed) && (
             <div className="relative overflow-hidden rounded border bg-muted">
-              {record.embed.video.thumbnail && (
+              {(mediaEmbed || embed).thumbnail && (
                 <img
-                  src={record.embed.video.thumbnail}
-                  alt={record.embed.video.alt || 'Video'}
+                  src={(mediaEmbed || embed).thumbnail}
+                  alt={(mediaEmbed || embed).alt || 'Video'}
                   className="w-full h-32 object-cover"
                   loading="lazy"
                 />

@@ -43,6 +43,7 @@ export type JetstreamEvent = JetstreamCommit | JetstreamIdentity | JetstreamAcco
 export interface BlueskyPost {
   uri: string;
   cid: string;
+  embed?: any;
   author: {
     did: string;
     handle: string;
@@ -52,25 +53,6 @@ export interface BlueskyPost {
   record: {
     text: string;
     createdAt: string;
-    embed?: {
-      $type: string;
-      images?: Array<{
-        thumb: string;
-        fullsize: string;
-        alt: string;
-      }>;
-      external?: {
-        uri: string;
-        title: string;
-        description: string;
-        thumb?: string;
-      };
-      video?: {
-        playlist: string;
-        thumbnail?: string;
-        alt?: string;
-      };
-    };
     [key: string]: any;
   };
   indexedAt: string;
