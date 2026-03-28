@@ -175,6 +175,10 @@ export default function StreamPlayer({ handle }: StreamPlayerProps) {
     setIsChatOpen(true);
   };
 
+  const openChatInNewTab = () => {
+    window.open(chatUrl, '_blank', 'noopener,noreferrer');
+  };
+
   const takeScreenshot = async () => {
     if (!containerRef.current || isCapturing) return;
     
@@ -312,6 +316,16 @@ export default function StreamPlayer({ handle }: StreamPlayerProps) {
                     variant="ghost"
                     size="icon"
                     className="h-7 w-7"
+                    onClick={openChatInNewTab}
+                    title="Open chat in new tab"
+                  >
+                    <ExternalLink className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
                     onClick={() => setIsChatOpen(false)}
                     title="Close chat"
                   >
@@ -390,7 +404,7 @@ export default function StreamPlayer({ handle }: StreamPlayerProps) {
                     variant="ghost"
                     size="icon"
                     className="h-7 w-7"
-                    onClick={() => window.open(chatUrl, '_blank', 'noopener,noreferrer')}
+                    onClick={openChatInNewTab}
                     title="Open chat in new tab"
                   >
                     <ExternalLink className="h-3.5 w-3.5" />
@@ -436,9 +450,18 @@ export default function StreamPlayer({ handle }: StreamPlayerProps) {
             variant="secondary"
             onClick={openChatWindow}
             className="bg-background/90 backdrop-blur-sm hover:bg-background rounded-md shadow-sm"
-            title="Open stream chat"
+            title="Open chat in this page"
           >
             <MessageSquare className="h-4 w-4" />
+          </Button>
+          <Button
+            size="icon"
+            variant="secondary"
+            onClick={openChatInNewTab}
+            className="bg-background/90 backdrop-blur-sm hover:bg-background rounded-md shadow-sm"
+            title="Open stream chat in new tab (recommended for sign-in)"
+          >
+            <ExternalLink className="h-4 w-4" />
           </Button>
           <Button
             size="icon"
